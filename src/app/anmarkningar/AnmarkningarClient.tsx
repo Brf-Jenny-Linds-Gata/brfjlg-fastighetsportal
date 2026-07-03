@@ -20,6 +20,94 @@ type Anmarkning = {
   kontroll_kontext: string;
 };
 
+// Modulnivå med avsikt — se motsvarande kommentar för Rad i
+// UnderhallsplanClient.tsx. En Kort definierad inne i AnmarkningarClient
+// skulle tappa fokus i kommentarsfältet efter varje tecken.
+function Kort({
+  a,
+  redigerarId,
+  setRedigerarId,
+  kommentar,
+  setKommentar,
+  atgarda,
+}: {
+  a: Anmarkning;
+  redigerarId: string | null;
+  setRedigerarId: (id: string | null) => void;
+  kommentar: string;
+  setKommentar: (v: string) => void;
+  atgarda: (id: string) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-stone-200 bg-white p-4 text-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-stone-500">{a.kontroll_kontext}</p>
+          <p className="mt-1 text-stone-800">{a.beskrivning}</p>
+          <p className="mt-1 text-xs text-stone-600">
+            {[a.punkt_text, a.port_adress].filter(Boolean).join(" · ") || "Ingen specifik plats angiven"}
+          </p>
+          {a.status === "åtgärdad" && (
+            <p className="mt-1 text-xs text-green-700">
+              Åtgärdad av {a.atgardad_av_namn ?? "okänd"}
+              {a.atgardad_datum ? ` den ${a.atgardad_datum}` : ""}
+              {a.atgardskommentar ? ` — ${a.atgardskommentar}` : ""}
+            </p>
+          )}
+        </div>
+        <span
+          className={
+            "shrink-0 rounded-full px-2 py-0.5 text-xs " +
+            (a.status === "åtgärdad" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800")
+          }
+        >
+          {a.status}
+        </span>
+      </div>
+
+      {a.status === "öppen" && a.kontroll_last && (
+        <p className="mt-3 text-xs text-stone-500">
+          Protokollet den här anmärkningen hör till är klarmarkerat och låst.
+        </p>
+      )}
+
+      {a.status === "öppen" && !a.kontroll_last && (
+        <div className="mt-3">
+          {redigerarId === a.id ? (
+            <div className="flex flex-wrap gap-2">
+              <input
+                value={kommentar}
+                onChange={(e) => setKommentar(e.target.value)}
+                placeholder="Kommentar om åtgärden (valfritt)"
+                className="min-w-0 flex-1 rounded-md border border-stone-300 bg-white px-2 py-1 text-xs text-stone-900"
+              />
+              <button
+                onClick={() => atgarda(a.id)}
+                className="rounded-md bg-stone-800 px-3 py-1 text-xs text-white hover:bg-stone-700"
+              >
+                Spara
+              </button>
+              <button
+                onClick={() => setRedigerarId(null)}
+                className="rounded-md border border-stone-300 px-3 py-1 text-xs hover:bg-stone-50"
+              >
+                Avbryt
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setRedigerarId(a.id)}
+              className="rounded-md border border-stone-300 px-3 py-1 text-xs hover:bg-stone-50"
+            >
+              Markera åtgärdad
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AnmarkningarClient({
   initialAnmarkningar,
   currentProfilId,
@@ -65,77 +153,6 @@ export function AnmarkningarClient({
     setKommentar("");
   }
 
-  function Kort({ a }: { a: Anmarkning }) {
-    return (
-      <div className="rounded-lg border border-stone-200 bg-white p-4 text-sm">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-stone-500">{a.kontroll_kontext}</p>
-            <p className="mt-1 text-stone-800">{a.beskrivning}</p>
-            <p className="mt-1 text-xs text-stone-600">
-              {[a.punkt_text, a.port_adress].filter(Boolean).join(" · ") || "Ingen specifik plats angiven"}
-            </p>
-            {a.status === "åtgärdad" && (
-              <p className="mt-1 text-xs text-green-700">
-                Åtgärdad av {a.atgardad_av_namn ?? "okänd"}
-                {a.atgardad_datum ? ` den ${a.atgardad_datum}` : ""}
-                {a.atgardskommentar ? ` — ${a.atgardskommentar}` : ""}
-              </p>
-            )}
-          </div>
-          <span
-            className={
-              "shrink-0 rounded-full px-2 py-0.5 text-xs " +
-              (a.status === "åtgärdad" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800")
-            }
-          >
-            {a.status}
-          </span>
-        </div>
-
-        {a.status === "öppen" && a.kontroll_last && (
-          <p className="mt-3 text-xs text-stone-500">
-            Protokollet den här anmärkningen hör till är klarmarkerat och låst.
-          </p>
-        )}
-
-        {a.status === "öppen" && !a.kontroll_last && (
-          <div className="mt-3">
-            {redigerarId === a.id ? (
-              <div className="flex flex-wrap gap-2">
-                <input
-                  value={kommentar}
-                  onChange={(e) => setKommentar(e.target.value)}
-                  placeholder="Kommentar om åtgärden (valfritt)"
-                  className="min-w-0 flex-1 rounded-md border border-stone-300 bg-white px-2 py-1 text-xs text-stone-900"
-                />
-                <button
-                  onClick={() => atgarda(a.id)}
-                  className="rounded-md bg-stone-800 px-3 py-1 text-xs text-white hover:bg-stone-700"
-                >
-                  Spara
-                </button>
-                <button
-                  onClick={() => setRedigerarId(null)}
-                  className="rounded-md border border-stone-300 px-3 py-1 text-xs hover:bg-stone-50"
-                >
-                  Avbryt
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setRedigerarId(a.id)}
-                className="rounded-md border border-stone-300 px-3 py-1 text-xs hover:bg-stone-50"
-              >
-                Markera åtgärdad
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-stone-50 px-4 py-6 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-3xl">
@@ -163,7 +180,7 @@ export function AnmarkningarClient({
             </div>
           )}
           {oppna.map((a) => (
-            <Kort key={a.id} a={a} />
+            <Kort key={a.id} a={a} redigerarId={redigerarId} setRedigerarId={setRedigerarId} kommentar={kommentar} setKommentar={setKommentar} atgarda={atgarda} />
           ))}
         </div>
 
@@ -174,7 +191,7 @@ export function AnmarkningarClient({
             </h2>
             <div className="mt-2 space-y-2">
               {atgardade.map((a) => (
-                <Kort key={a.id} a={a} />
+                <Kort key={a.id} a={a} redigerarId={redigerarId} setRedigerarId={setRedigerarId} kommentar={kommentar} setKommentar={setKommentar} atgarda={atgarda} />
               ))}
             </div>
           </>
