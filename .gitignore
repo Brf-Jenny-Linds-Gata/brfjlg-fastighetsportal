@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# lokala db-backuper (innehåller persondata, ska aldrig committas)
+/scripts/backups/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

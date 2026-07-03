@@ -14,8 +14,16 @@ export default async function Home() {
   ].filter((l) => farSe(l.sida, profil?.roll));
 
   return (
-    <div className="min-h-screen bg-stone-50 px-6 py-10">
-      <div className="mx-auto max-w-3xl">
+    <div className="relative min-h-screen overflow-hidden bg-stone-50 px-6 py-10">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[url('/images/tulpaner.webp')] bg-cover bg-top opacity-55"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(250,250,249,0.85)_0%,rgba(250,250,249,0.8)_35%,rgba(250,250,249,0.4)_65%,rgba(250,250,249,0.05)_100%)]"
+        aria-hidden="true"
+      />
+      <div className="relative mx-auto max-w-3xl">
         <div className="flex items-center justify-between">
           <h1 className="flex items-center gap-2 text-xl font-semibold text-stone-800">
             BrfJLG Fastighetsportal

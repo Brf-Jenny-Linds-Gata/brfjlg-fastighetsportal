@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ProfilRoll } from "@/lib/supabase/profile";
 import { Hjalp } from "@/components/Hjalp";
+import { SidbakgrundBild } from "@/components/SidbakgrundBild";
 
 type AdminUser = {
   id: string;
@@ -66,8 +67,9 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 px-4 py-6 sm:px-6 sm:py-10">
-      <div className="mx-auto max-w-3xl">
+    <div className="relative min-h-screen overflow-hidden bg-stone-50 px-4 py-6 sm:px-6 sm:py-10">
+      <SidbakgrundBild />
+      <div className="relative mx-auto max-w-3xl">
         <Link href="/" className="text-sm text-stone-600 underline hover:text-stone-800">
           ← Startsida
         </Link>

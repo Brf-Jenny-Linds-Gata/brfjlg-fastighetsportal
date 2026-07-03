@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/profile";
 import { farSe } from "@/lib/permissions";
 import { Hjalp } from "@/components/Hjalp";
+import { SidbakgrundBild } from "@/components/SidbakgrundBild";
 import type { SbaKontroll } from "@/lib/supabase/types";
 
 export default async function SbaPage() {
@@ -42,8 +43,9 @@ export default async function SbaPage() {
   });
 
   return (
-    <div className="min-h-screen bg-stone-50 px-4 py-6 sm:px-6 sm:py-10">
-      <div className="mx-auto max-w-3xl">
+    <div className="relative min-h-screen overflow-hidden bg-stone-50 px-4 py-6 sm:px-6 sm:py-10">
+      <SidbakgrundBild />
+      <div className="relative mx-auto max-w-3xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <Link href="/" className="text-sm text-stone-600 underline hover:text-stone-800">

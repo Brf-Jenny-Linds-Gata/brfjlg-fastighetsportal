@@ -20,9 +20,9 @@ export function Hjalp({ text }: { text: string }) {
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-stone-400 hover:text-stone-700"
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full text-stone-600 hover:text-stone-900"
       >
-        <HelpCircle size={16} />
+        <HelpCircle size={18} strokeWidth={2.25} />
       </button>
       {open && (
         <span

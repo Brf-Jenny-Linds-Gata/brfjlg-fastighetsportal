@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ImageIcon, Paperclip, Printer } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Hjalp } from "@/components/Hjalp";
+import { SidbakgrundBild } from "@/components/SidbakgrundBild";
 import type {
   SbaAnmarkning,
   SbaKontroll,
@@ -347,13 +348,16 @@ export function KontrollClient({
   const allmannaAnmarkningar = anmarkningarFor(null);
 
   return (
-    <div className="min-h-screen bg-stone-50 px-4 py-6 sm:px-6 sm:py-10 print:bg-white print:px-0 print:py-0">
+    <div className="relative min-h-screen overflow-hidden bg-stone-50 px-4 py-6 sm:px-6 sm:py-10 print:bg-white print:px-0 print:py-0">
+      <div className="print:hidden">
+        <SidbakgrundBild />
+      </div>
       <style>{`
         @media print {
           .print-visa { display: block !important; }
         }
       `}</style>
-      <div className="mx-auto max-w-3xl">
+      <div className="relative mx-auto max-w-3xl">
         <div className="print-visa hidden">
           <p className="text-xs uppercase tracking-wide text-stone-500">Brf Jenny Linds Gata</p>
           <h1 className="text-lg font-semibold text-stone-900">Protokoll — systematiskt brandskyddsarbete</h1>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Hjalp } from "@/components/Hjalp";
+import { SidbakgrundBild } from "@/components/SidbakgrundBild";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -42,8 +43,9 @@ export function NyKontrollForm({ fastigheter }: { fastigheter: { id: string; nam
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 px-6 py-10">
-      <div className="mx-auto max-w-md">
+    <div className="relative min-h-screen overflow-hidden bg-stone-50 px-6 py-10">
+      <SidbakgrundBild />
+      <div className="relative mx-auto max-w-md">
         <Link href="/sba" className="text-sm text-stone-600 underline hover:text-stone-700">
           ← Tillbaka
         </Link>

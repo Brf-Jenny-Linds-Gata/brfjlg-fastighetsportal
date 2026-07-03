@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Hjalp } from "@/components/Hjalp";
+import { SidbakgrundBild } from "@/components/SidbakgrundBild";
 import type { UhPost } from "@/lib/supabase/types";
 
 const FASTIGHET_COLOR: Record<string, { dot: string; bg: string; text: string }> = {
@@ -823,8 +824,11 @@ export function UnderhallsplanClient({
         minHeight: "100%",
         color: "#2b2620",
         padding: "0",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
+      <SidbakgrundBild />
       <style>{`
         * { box-sizing: border-box; }
         .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -832,7 +836,7 @@ export function UnderhallsplanClient({
         .row:hover { background: #f1ece2 !important; }
       `}</style>
 
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "20px 16px 60px" }}>
+      <div style={{ maxWidth: 980, margin: "0 auto", padding: "20px 16px 60px", position: "relative" }}>
         <Link href="/" className="sans" style={{ fontSize: 13, color: MUTED, textDecoration: "underline" }}>
           ← Startsida
         </Link>
@@ -860,6 +864,13 @@ export function UnderhallsplanClient({
               {new Date(senastUppdaterad).toLocaleString("sv-SE", { dateStyle: "medium", timeStyle: "short" })}
             </p>
           )}
+          <Link
+            href="/underhallsplan/logg"
+            className="sans"
+            style={{ fontSize: 12, color: "#a8562f", textDecoration: "underline", display: "inline-block", marginTop: 6 }}
+          >
+            Visa ändringslogg →
+          </Link>
         </div>
 
         <div className="sans" style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>

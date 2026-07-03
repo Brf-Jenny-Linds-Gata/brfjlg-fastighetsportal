@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Hjalp } from "@/components/Hjalp";
+import { SidbakgrundBild } from "@/components/SidbakgrundBild";
 
 type Anmarkning = {
   id: string;
@@ -65,13 +66,7 @@ function Kort({
         </span>
       </div>
 
-      {a.status === "öppen" && a.kontroll_last && (
-        <p className="mt-3 text-xs text-stone-500">
-          Protokollet den här anmärkningen hör till är klarmarkerat och låst.
-        </p>
-      )}
-
-      {a.status === "öppen" && !a.kontroll_last && (
+      {a.status === "öppen" && (
         <div className="mt-3">
           {redigerarId === a.id ? (
             <div className="flex flex-wrap gap-2">
@@ -154,8 +149,9 @@ export function AnmarkningarClient({
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 px-4 py-6 sm:px-6 sm:py-10">
-      <div className="mx-auto max-w-3xl">
+    <div className="relative min-h-screen overflow-hidden bg-stone-50 px-4 py-6 sm:px-6 sm:py-10">
+      <SidbakgrundBild />
+      <div className="relative mx-auto max-w-3xl">
         <Link href="/" className="text-sm text-stone-600 underline hover:text-stone-800">
           ← Startsida
         </Link>

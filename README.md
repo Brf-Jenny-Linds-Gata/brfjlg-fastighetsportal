@@ -20,6 +20,7 @@ underhållsplanering och SBA (systematiskt brandskyddsarbete).
 - [Mappstruktur](#mappstruktur)
 - [Kom igång lokalt](#kom-igång-lokalt)
 - [Databasmigrationer](#databasmigrationer)
+- [Ändringslogg](#ändringslogg)
 - [Export](#export)
 - [Kända begränsningar / kvar att göra](#kända-begränsningar--kvar-att-göra)
 
@@ -135,11 +136,15 @@ Definierad i `db/001_init_schema.sql`, med tillägg i senare migrationsfiler
   (`styrelse` / `brandskyddsansvarig` / `medlem` / `entreprenör`)
 - **uh_kategorier**, **uh_poster** – underhållsplanens poster, taggade per
   fastighet (eller `null` = Gemensam), kategori och år. `uh_andringslogg`
-  loggar automatiskt år-/kostnads-/statusändringar via en databastrigger.
+  loggar automatiskt år-/kostnads-/status-/namn-/fastighets-/kategori-/
+  genomförd-ändringar via en databastrigger (se
+  [Ändringslogg](#ändringslogg)).
 - **sba_kontrollpunkter**, **sba_kontroller**, **sba_kontroll_resultat**,
   **sba_anmarkningar** – SBA-checklistor per kvartal/fastighet, med
   anmärkningar (ev. med foto) kopplade till enskilda checklistepunkter
-  eller portar.
+  eller portar. När en kontroll markeras `klar` låses checklistesvaren
+  (`sba_kontroll_resultat`), men **anmärkningar förblir redigerbara** —
+  de åtgärdas ofta långt efter att inspektionen är avslutad.
 
 All åtkomst styrs av Row Level Security-policyer (definierade i
 migrationsfilerna) – inte av applikationskoden. Det betyder att samma
@@ -259,6 +264,15 @@ placerad bredvid varje sidas `<h1>`. Sidspecifik text skrivs inline där
 komponenten används, ingen central texttabell — lägg till en ny
 `<Hjalp text="..." />` när en ny sida byggs.
 
+**`src/components/SidbakgrundBild.tsx`** – diskret bakgrundsbild
+(körsbärsträdet på gården, `public/images/korsbarstrad.webp`) bakom
+innehållet på underhållsplan/SBA/anmärkningar/admin/ändringslogg.
+Startsidan (`src/app/page.tsx`) har en egen variant med tulpaner
+(`public/images/tulpaner.webp`) och en gradient som tonar starkare upptill
+och svagare nedåt. Bilderna är komprimerade som WebP; källbilderna var
+skärmdumpar av foton från föreningens gård. Döljs vid PDF-utskrift av
+SBA-protokoll (`print:hidden`).
+
 ## Kom igång lokalt
 
 Förutsätter Node.js 20.9+ och att `.env.local` finns (se ovan).
@@ -288,6 +302,31 @@ migrationsrunner kopplad till detta projekt.
 | `006_uh_poster_genomford.sql` | Nya kolumner för "markera genomförd" + återkommande intervall |
 | `007_uh_andringslogg_insert_policy.sql` | **Kritisk fix** – ändringsloggens trigger saknade INSERT-policy, blockerade alla år-/kostnadsändringar på UH-poster |
 | `008_grant_service_role_privileges.sql` | **Kritisk fix** – samma sak som 004 men för `service_role` (användarhanteringens admin-API:er) |
+| `009_uh_andringslogg_fler_falt.sql` | Utökar ändringsloggens trigger till att även logga namn/fastighet/kategori/genomförd-datum (tidigare bara år/investering/underhåll/status) |
+
+### Manuell databas-backup
+
+`scripts/backup-db.mjs` dumpar samtliga tabeller (utom `auth.users` självt)
+till en tidsstämplad JSON-fil i `scripts/backups/` (gitignorat – innehåller
+persondata):
+
+```bash
+node --env-file=.env.local scripts/backup-db.mjs
+```
+
+Praktiskt som säkerhetsknapp innan man experimenterar direkt i
+produktions-DB. Ersätter inte riktiga backuper (Supabase Dashboard →
+Database → Backups) och täcker inte auth-konton, bara `profiler`-tabellens
+rader som pekar på dem.
+
+## Ändringslogg
+
+`/underhallsplan/logg` visar de senaste ändringarna i underhållsplanen
+(vem, när, vilket fält, från/till-värde). Datan loggas automatiskt av
+databastriggern `trg_log_uh_andring` (se `db/001_init_schema.sql` och
+`db/009_uh_andringslogg_fler_falt.sql`) — ingen applikationskod skriver
+till `uh_andringslogg` direkt. Synlig för samma roller som
+underhållsplanen (styrelse, medlem).
 
 ## Användarhantering (admin-vy)
 
