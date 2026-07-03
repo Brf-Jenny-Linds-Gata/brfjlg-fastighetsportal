@@ -430,12 +430,15 @@ behöver hålla koll på själv:
 
 ### Kräver manuell koll då och då
 
-- **Databas-backup**: kolla **Supabase Dashboard → Database → Backups**
-  för vad som faktiskt ingår i er plan (gratisplanen har begränsad eller
-  ingen automatisk backup-historik; betalplaner har dagliga backuper och
-  point-in-time recovery). Komplettera vid behov med det manuella
-  scriptet, se [Manuell databas-backup](#manuell-databas-backup) — särskilt
-  inför större ändringar eller experiment.
+- **Databas-backup**: kontrollerat 2026-07-04 i **Supabase Dashboard →
+  Database → Backups** — **gratisplanen (Free) har ingen automatisk
+  backup alls** ("Free Plan does not include project backups"). Pro-planen
+  ger 7 dagars schemalagda backuper + point-in-time recovery. Så länge
+  föreningen kör på gratisplanen är **det manuella scriptet den enda
+  backupen som finns** — kör det regelbundet (t.ex. månadsvis) och alltid
+  inför större ändringar/experiment, se
+  [Manuell databas-backup](#manuell-databas-backup). Att uppgradera till
+  Pro är värt att ta upp med styrelsen om datan blir viktigare över tid.
 - **npm-beroenden (säkerhetspatchar i koden)**: uppdateras **inte**
   automatiskt. Kör med jämna mellanrum (t.ex. några gånger per år, eller
   om ni får en säkerhetsvarning):
@@ -446,12 +449,13 @@ behöver hålla koll på själv:
   Uppdatera försiktigt ett paket i taget och testa lokalt innan push —
   särskilt Next.js, som historiskt haft stora brytande ändringar mellan
   versioner (se varningen i [Teknisk stack](#teknisk-stack)).
-- **Dependabot** (rekommenderat, inte aktiverat än): GitHub kan
-  automatiskt skapa pull requests när ett beroende har en känd
-  säkerhetsbrist. Kostnadsfritt att slå på för publika repon: **Repo →
-  Settings → Code security → Dependabot alerts / Security updates**.
-  Gör jobbet med att hitta säkerhetspatchar åt er, men ändringarna måste
-  fortfarande granskas och mergas manuellt.
+- **Dependabot**: kontrollerat 2026-07-04 — **redan aktiverat** på repot
+  (Dependabot alerts + Dependabot security updates står båda på "Disable",
+  vilket i GitHubs gränssnitt betyder att de redan är påslagna). GitHub
+  mejlar `info@brfjlg.se` vid en upptäckt säkerhetsbrist och öppnar
+  automatiskt en pull request med fixen — den behöver bara granskas och
+  mergas manuellt (**Repo → Settings → Code security** om ni vill se
+  eller ändra inställningen).
 - **Domän/DNS** (Loopia + brfnet): ingen automatik alls — årsavgiften för
   brfjlg.se måste betalas manuellt hos Loopia, annars slutar domänen (och
   därmed e-postutskicken via Resend) att fungera.
