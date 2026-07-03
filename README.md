@@ -20,6 +20,7 @@ underhållsplanering och SBA (systematiskt brandskyddsarbete).
 - [Mappstruktur](#mappstruktur)
 - [Kom igång lokalt](#kom-igång-lokalt)
 - [Databasmigrationer](#databasmigrationer)
+- [Export](#export)
 - [Kända begränsningar / kvar att göra](#kända-begränsningar--kvar-att-göra)
 
 ## Överlämning – konton och åtkomst
@@ -273,6 +274,23 @@ applikationskoden, inte i databasen.
 **Innan produktionsdeploy:** `SUPABASE_SERVICE_ROLE_KEY` måste läggas till
 som miljövariabel i Vercel (server-only, inte prefixad med
 `NEXT_PUBLIC_`) när projektet sätts upp där.
+
+## Export
+
+- **SBA-protokoll → PDF**: en klarmarkerad kontroll (`/sba/[id]`) har en
+  "Skriv ut / Spara som PDF"-knapp. Ingen PDF-bibliotek används — en
+  utskriftsanpassad stilmall (Tailwinds `print:`-variant) döljer
+  knappar/navigation och lägger till en tryckt rubrik, sen sköter
+  webbläsarens inbyggda "Skriv ut → Spara som PDF" resten.
+- **Underhållsplan → Excel**: "Exportera till Excel (CSV)"-knappen
+  respekterar aktiv Plan/Historik-flik och fastighetsfilter. Medvetet
+  CSV och inte en riktig `.xlsx`: det enda underhållna
+  npm-paketet för att skriva `.xlsx` (SheetJS/`xlsx`) har en
+  okorrigerad sårbarhet med hög allvarlighetsgrad (prototype
+  pollution, se `GHSA-4r6h-8v6p-xvw6`) utan tillgänglig fix. En
+  semikolon-separerad CSV med UTF-8 BOM (svensk Excel-standard)
+  öppnas identiskt av Excel för den här sortens tabelldata, utan att
+  dra in en osäker dependency.
 
 ## Kända begränsningar / kvar att göra
 
