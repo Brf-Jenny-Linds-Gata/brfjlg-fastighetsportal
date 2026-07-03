@@ -7,7 +7,7 @@ export default async function Home() {
   const profil = await getCurrentProfile();
 
   const lankar = [
-    { href: "/underhallsplan", label: "Öppna underhållsplan", sida: "underhallsplan" as const, primar: true },
+    { href: "/underhallsplan", label: "Underhållsplan", sida: "underhallsplan" as const, primar: true },
     { href: "/sba", label: "Systematiskt brandskyddsarbete", sida: "sba" as const, primar: false },
     { href: "/anmarkningar", label: "Anmärkningar att åtgärda", sida: "anmarkningar" as const, primar: false },
     { href: "/admin", label: "Användarhantering", sida: "admin" as const, primar: false },
