@@ -7,13 +7,17 @@ export default async function UnderhallsplanPage() {
   const supabase = await createClient();
   const profil = await getCurrentProfile();
 
-  const { data, error } = await supabase
-    .from("uh_poster")
-    .select(
-      "id, fastighet_id, lage, namn, ar, investering, underhall, typ, status, genomford_datum, aterkommande_intervall_ar, fastigheter(namn), uh_kategorier(namn)"
-    )
-    .eq("status", "godkänd")
-    .order("ar", { ascending: true });
+  const [{ data, error }, { data: fastigheter }, { data: kategorier }] = await Promise.all([
+    supabase
+      .from("uh_poster")
+      .select(
+        "id, fastighet_id, kategori_id, lage, namn, ar, investering, underhall, typ, status, genomford_datum, aterkommande_intervall_ar, fastigheter(namn), uh_kategorier(namn)"
+      )
+      .eq("status", "godkänd")
+      .order("ar", { ascending: true }),
+    supabase.from("fastigheter").select("id, namn").order("namn"),
+    supabase.from("uh_kategorier").select("id, namn").order("namn"),
+  ]);
 
   if (error) {
     return (
@@ -30,7 +34,7 @@ export default async function UnderhallsplanPage() {
       id: row.id,
       fastighet_id: row.fastighet_id,
       fastighet_namn: fastighet?.namn ?? "Gemensam",
-      kategori_id: null,
+      kategori_id: row.kategori_id,
       kategori_namn: kategori?.namn ?? null,
       lage: row.lage,
       namn: row.namn,
@@ -44,5 +48,13 @@ export default async function UnderhallsplanPage() {
     };
   });
 
-  return <UnderhallsplanClient initialItems={items} kanRedigera={profil?.roll === "styrelse"} />;
+  return (
+    <UnderhallsplanClient
+      initialItems={items}
+      kanRedigera={profil?.roll === "styrelse"}
+      fastigheter={fastigheter ?? []}
+      kategorier={kategorier ?? []}
+      currentProfilId={profil?.id ?? null}
+    />
+  );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   BarChart,
   Bar,
@@ -11,7 +12,17 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Pencil, Check, X, RotateCcw, ChevronDown, ChevronRight, CheckCircle2 } from "lucide-react";
+import {
+  Pencil,
+  Check,
+  X,
+  RotateCcw,
+  ChevronDown,
+  ChevronRight,
+  CheckCircle2,
+  SquarePen,
+  Plus,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { UhPost } from "@/lib/supabase/types";
 
@@ -21,10 +32,23 @@ const FASTIGHET_COLOR: Record<string, { dot: string; bg: string; text: string }>
   Gemensam: { dot: "#6b6459", bg: "#ede9e2", text: "#4a453b" },
 };
 
+const KATEGORI_PALETTE = [
+  "#3d5b3f",
+  "#a8562f",
+  "#5b4d8a",
+  "#2f6b78",
+  "#a3813a",
+  "#8a3d5c",
+  "#4a7a3d",
+  "#5c5c8a",
+  "#8a5c3d",
+  "#3d7a7a",
+];
+
 const CURRENT_YEAR = new Date().getFullYear();
-const CHART_TO_YEAR = CURRENT_YEAR + 20;
 const MUTED = "#6b6459";
 const MUTED_DASH = "#a19a8c";
+const ROW_COLS = "70px 120px 1fr 100px 100px 150px 56px";
 
 function krCompact(n: number) {
   if (Math.abs(n) >= 1000000) return (n / 1000000).toFixed(1).replace(".0", "") + " mkr";
@@ -49,6 +73,25 @@ function yearlyTotals(items: UhPost[], fastighetFilter: string, fromYear: number
   return Object.values(byYear);
 }
 
+function kategoriStaplat(items: UhPost[], fastighetFilter: string, fromYear: number, toYear: number, kategoriNamn: string[]) {
+  const filtered =
+    fastighetFilter === "Alla" ? items : items.filter((i) => i.fastighet_namn === fastighetFilter);
+  const byYear: Record<number, Record<string, number>> = {};
+  for (let y = fromYear; y <= toYear; y++) {
+    byYear[y] = { ar: y as unknown as number } as unknown as Record<string, number>;
+    kategoriNamn.forEach((k) => (byYear[y][k] = 0));
+  }
+  filtered.forEach((it) => {
+    if (it.ar >= fromYear && it.ar <= toYear) {
+      const k = it.kategori_namn ?? "Övrigt";
+      byYear[it.ar][k] = (byYear[it.ar][k] ?? 0) + it.investering + it.underhall;
+    }
+  });
+  return Object.entries(byYear)
+    .map(([ar, vals]) => ({ ar: Number(ar), ...vals }))
+    .sort((a, b) => a.ar - b.ar);
+}
+
 function groupByYearAndKategori(items: UhPost[]) {
   const byYear = new Map<number, Map<string, UhPost[]>>();
   for (const item of items) {
@@ -66,16 +109,27 @@ function groupByYearAndKategori(items: UhPost[]) {
     }));
 }
 
+type ListPost = { id: string; namn: string };
+
 export function UnderhallsplanClient({
   initialItems,
   kanRedigera,
+  fastigheter,
+  kategorier,
+  currentProfilId,
 }: {
   initialItems: UhPost[];
   kanRedigera: boolean;
+  fastigheter: ListPost[];
+  kategorier: ListPost[];
+  currentProfilId: string | null;
 }) {
   const [items, setItems] = useState(initialItems);
   const [draft, setDraft] = useState(initialItems);
   const [fastighetFilter, setFastighetFilter] = useState("Alla");
+  const [grafAr, setGrafAr] = useState(20);
+  const [visning, setVisning] = useState<"plan" | "historik">("plan");
+  const chartToYear = CURRENT_YEAR + grafAr;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editYear, setEditYear] = useState("");
   const [savedNote, setSavedNote] = useState("");
@@ -83,6 +137,12 @@ export function UnderhallsplanClient({
   const [saveError, setSaveError] = useState("");
   const [genomforId, setGenomforId] = useState<string | null>(null);
   const [genomforIntervall, setGenomforIntervall] = useState("");
+  const [redigerarId, setRedigerarId] = useState<string | null>(null);
+  const [redigerNamn, setRedigerNamn] = useState("");
+  const [redigerKategoriId, setRedigerKategoriId] = useState("");
+  const [redigerInvestering, setRedigerInvestering] = useState("");
+  const [redigerUnderhall, setRedigerUnderhall] = useState("");
+  const [visaNyForm, setVisaNyForm] = useState(false);
 
   const hasPending = draft !== items && JSON.stringify(draft) !== JSON.stringify(items);
 
@@ -94,10 +154,17 @@ export function UnderhallsplanClient({
 
   const grouped = useMemo(() => groupByYearAndKategori(visibleItems), [visibleItems]);
 
+  const alleKategoriNamn = useMemo(
+    () => [...new Set(visibleItems.map((i) => i.kategori_namn ?? "Övrigt"))].sort((a, b) => a.localeCompare(b, "sv")),
+    [visibleItems]
+  );
+  const kategoriColor = (namn: string) => KATEGORI_PALETTE[alleKategoriNamn.indexOf(namn) % KATEGORI_PALETTE.length];
+
   const [expandedYears, setExpandedYears] = useState<Set<number>>(() => {
     const nearest = visibleItems.map((i) => i.ar).find((y) => y >= CURRENT_YEAR);
     return new Set(nearest !== undefined ? [nearest] : []);
   });
+  const [collapsedKategorier, setCollapsedKategorier] = useState<Set<string>>(new Set());
 
   function toggleYear(ar: number) {
     setExpandedYears((prev) => {
@@ -107,17 +174,29 @@ export function UnderhallsplanClient({
       return next;
     });
   }
+  function toggleKategori(nyckel: string) {
+    setCollapsedKategorier((prev) => {
+      const next = new Set(prev);
+      if (next.has(nyckel)) next.delete(nyckel);
+      else next.add(nyckel);
+      return next;
+    });
+  }
 
   const totalsCurrent = useMemo(
-    () => yearlyTotals(items, fastighetFilter, CURRENT_YEAR, CHART_TO_YEAR),
-    [items, fastighetFilter]
+    () => yearlyTotals(items, fastighetFilter, CURRENT_YEAR, chartToYear),
+    [items, fastighetFilter, chartToYear]
   );
   const totalsDraft = useMemo(
-    () => yearlyTotals(draft, fastighetFilter, CURRENT_YEAR, CHART_TO_YEAR),
-    [draft, fastighetFilter]
+    () => yearlyTotals(draft, fastighetFilter, CURRENT_YEAR, chartToYear),
+    [draft, fastighetFilter, chartToYear]
+  );
+  const staplatData = useMemo(
+    () => kategoriStaplat(items, fastighetFilter, CURRENT_YEAR, chartToYear, alleKategoriNamn),
+    [items, fastighetFilter, chartToYear, alleKategoriNamn]
   );
 
-  const chartData = totalsCurrent.map((row, idx) => ({
+  const chartDataJamfor = totalsCurrent.map((row, idx) => ({
     ar: row.ar,
     "Nuvarande plan": row.investering + row.underhall,
     "Simulerad ändring": hasPending ? totalsDraft[idx].investering + totalsDraft[idx].underhall : undefined,
@@ -150,7 +229,10 @@ export function UnderhallsplanClient({
     const supabase = createClient();
 
     for (const item of changed) {
-      const { error } = await supabase.from("uh_poster").update({ ar: item.ar }).eq("id", item.id);
+      const { error } = await supabase
+        .from("uh_poster")
+        .update({ ar: item.ar, uppdaterad_av: currentProfilId })
+        .eq("id", item.id);
       if (error) {
         setSaveError(`Kunde inte spara "${item.namn}": ${error.message}`);
         setSaving(false);
@@ -176,7 +258,7 @@ export function UnderhallsplanClient({
 
     const { error: updateError } = await supabase
       .from("uh_poster")
-      .update({ genomford_datum: idag, aterkommande_intervall_ar: intervall })
+      .update({ genomford_datum: idag, aterkommande_intervall_ar: intervall, uppdaterad_av: currentProfilId })
       .eq("id", item.id);
 
     if (updateError) {
@@ -198,6 +280,7 @@ export function UnderhallsplanClient({
           underhall: item.underhall,
           typ: item.typ,
           status: "föreslagen",
+          skapad_av: currentProfilId,
         })
         .select(
           "id, fastighet_id, lage, namn, ar, investering, underhall, typ, status, genomford_datum, aterkommande_intervall_ar"
@@ -228,15 +311,114 @@ export function UnderhallsplanClient({
     setGenomforIntervall("");
   }
 
+  function startRedigera(item: UhPost) {
+    setRedigerarId(item.id);
+    setRedigerNamn(item.namn);
+    setRedigerKategoriId(item.kategori_id ?? "");
+    setRedigerInvestering(String(item.investering));
+    setRedigerUnderhall(String(item.underhall));
+  }
+  function avbrytRedigera() {
+    setRedigerarId(null);
+  }
+  async function sparaRedigera(item: UhPost) {
+    setSaveError("");
+    const investering = Number(redigerInvestering) || 0;
+    const underhall = Number(redigerUnderhall) || 0;
+    const kategori = kategorier.find((k) => k.id === redigerKategoriId);
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("uh_poster")
+      .update({
+        namn: redigerNamn.trim() || item.namn,
+        kategori_id: redigerKategoriId || null,
+        investering,
+        underhall,
+        uppdaterad_av: currentProfilId,
+      })
+      .eq("id", item.id);
+
+    if (error) {
+      setSaveError(`Kunde inte spara ändringar: ${error.message}`);
+      return;
+    }
+
+    const applyUpdate = (list: UhPost[]) =>
+      list.map((i) =>
+        i.id === item.id
+          ? {
+              ...i,
+              namn: redigerNamn.trim() || item.namn,
+              kategori_id: redigerKategoriId || null,
+              kategori_namn: kategori?.namn ?? null,
+              investering,
+              underhall,
+            }
+          : i
+      );
+    setItems(applyUpdate);
+    setDraft(applyUpdate);
+    setRedigerarId(null);
+  }
+
   const totalInvestering = visibleItems.reduce((s, i) => s + i.investering, 0);
   const totalUnderhall = visibleItems.reduce((s, i) => s + i.underhall, 0);
 
   function Rad({ item }: { item: UhPost }) {
     const c = FASTIGHET_COLOR[item.fastighet_namn ?? "Gemensam"] ?? FASTIGHET_COLOR.Gemensam;
     const isEditing = editingId === item.id;
+    const isRedigering = redigerarId === item.id;
     const changed = items.find((i) => i.id === item.id)?.ar !== item.ar;
     const kanFlyttas = kanRedigera && item.typ !== "löpande_buffert";
     const arGenomford = !!item.genomford_datum;
+
+    if (isRedigering) {
+      return (
+        <div className="sans" style={{ borderBottom: "1px solid #f3eee3", padding: "10px 14px", background: "#fdf6ee", fontSize: 13 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            <input
+              value={redigerNamn}
+              onChange={(e) => setRedigerNamn(e.target.value)}
+              placeholder="Åtgärd"
+              style={{ flex: "1 1 200px", padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
+            />
+            <select
+              value={redigerKategoriId}
+              onChange={(e) => setRedigerKategoriId(e.target.value)}
+              style={{ padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
+            >
+              <option value="">Ingen kategori</option>
+              {kategorier.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.namn}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              value={redigerInvestering}
+              onChange={(e) => setRedigerInvestering(e.target.value)}
+              placeholder="Investering"
+              style={{ width: 110, padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
+            />
+            <input
+              type="number"
+              value={redigerUnderhall}
+              onChange={(e) => setRedigerUnderhall(e.target.value)}
+              placeholder="Underhåll"
+              style={{ width: 110, padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
+            />
+            <button onClick={() => sparaRedigera(item)} style={{ border: "none", background: "none", cursor: "pointer", color: "#3d5b3f" }}>
+              <Check size={16} />
+            </button>
+            <button onClick={avbrytRedigera} style={{ border: "none", background: "none", cursor: "pointer", color: "#9a3232" }}>
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      );
+    }
 
     const fastighetBadge = (
       <span
@@ -275,26 +457,38 @@ export function UnderhallsplanClient({
       <span style={{ fontWeight: changed ? 700 : 400 }}>{item.ar}</span>
     );
 
-    const flyttaKnapp = kanFlyttas ? (
-      isEditing ? (
-        <div style={{ display: "flex", gap: 4 }}>
-          <button onClick={() => commitEdit(item)} style={{ border: "none", background: "none", cursor: "pointer", color: "#3d5b3f" }}>
-            <Check size={15} />
+    const atgardsKnappar = (
+      <div style={{ display: "flex", gap: 4 }}>
+        {kanFlyttas &&
+          (isEditing ? (
+            <>
+              <button onClick={() => commitEdit(item)} style={{ border: "none", background: "none", cursor: "pointer", color: "#3d5b3f" }}>
+                <Check size={15} />
+              </button>
+              <button onClick={cancelEdit} style={{ border: "none", background: "none", cursor: "pointer", color: "#9a3232" }}>
+                <X size={15} />
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => startEdit(item)}
+              style={{ border: "none", background: "none", cursor: "pointer", color: MUTED }}
+              title="Flytta till annat år"
+            >
+              <Pencil size={14} />
+            </button>
+          ))}
+        {kanRedigera && !isEditing && (
+          <button
+            onClick={() => startRedigera(item)}
+            style={{ border: "none", background: "none", cursor: "pointer", color: MUTED }}
+            title="Redigera åtgärd, kategori och kostnad"
+          >
+            <SquarePen size={14} />
           </button>
-          <button onClick={cancelEdit} style={{ border: "none", background: "none", cursor: "pointer", color: "#9a3232" }}>
-            <X size={15} />
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => startEdit(item)}
-          style={{ border: "none", background: "none", cursor: "pointer", color: MUTED }}
-          title="Flytta i planen"
-        >
-          <Pencil size={14} />
-        </button>
-      )
-    ) : null;
+        )}
+      </div>
+    );
 
     const genomfordAktion = kanRedigera ? (
       arGenomford ? (
@@ -306,13 +500,13 @@ export function UnderhallsplanClient({
           {item.aterkommande_intervall_ar ? ` · åter ${item.ar + item.aterkommande_intervall_ar}` : ""}
         </span>
       ) : genomforId === item.id ? (
-        <div className="sans" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="sans" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <input
             type="number"
-            placeholder="Återkom om X år (valfritt)"
+            placeholder="Återkom om X år"
             value={genomforIntervall}
             onChange={(e) => setGenomforIntervall(e.target.value)}
-            style={{ width: 150, padding: "3px 5px", border: "1px solid #d8cfbe", borderRadius: 4, fontSize: 12 }}
+            style={{ width: 120, padding: "3px 5px", border: "1px solid #d8cfbe", borderRadius: 4, fontSize: 12 }}
           />
           <button
             onClick={() => markeraGenomford(item)}
@@ -375,16 +569,13 @@ export function UnderhallsplanClient({
                 {item.underhall ? "Uh " + krCompact(item.underhall) : "—"}
               </span>
             </div>
-            {flyttaKnapp}
+            {atgardsKnappar}
           </div>
           {genomfordAktion && <div style={{ marginTop: 6 }}>{genomfordAktion}</div>}
         </div>
 
         {/* Desktop/tablet: rad-layout */}
-        <div
-          className="sans hidden sm:grid"
-          style={{ gridTemplateColumns: "70px 120px 1fr 100px 100px 90px 30px", gap: 8, alignItems: "center", fontSize: 13 }}
-        >
+        <div className="sans hidden sm:grid" style={{ gridTemplateColumns: ROW_COLS, gap: 8, alignItems: "center", fontSize: 13 }}>
           <div>{arVisning}</div>
           <div>{fastighetBadge}</div>
           <div>
@@ -400,7 +591,7 @@ export function UnderhallsplanClient({
             {item.underhall ? krCompact(item.underhall) : "—"}
           </div>
           <div>{genomfordAktion}</div>
-          <div style={{ textAlign: "right" }}>{flyttaKnapp}</div>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>{atgardsKnappar}</div>
         </div>
       </div>
     );
@@ -424,7 +615,11 @@ export function UnderhallsplanClient({
       `}</style>
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "20px 16px 60px" }}>
-        <div style={{ borderBottom: "2px solid #c1592c", paddingBottom: 14, marginBottom: 20 }}>
+        <Link href="/" className="sans" style={{ fontSize: 13, color: MUTED, textDecoration: "underline" }}>
+          ← Startsida
+        </Link>
+
+        <div style={{ borderBottom: "2px solid #c1592c", paddingBottom: 14, marginTop: 10, marginBottom: 20 }}>
           <div
             className="sans"
             style={{
@@ -463,8 +658,31 @@ export function UnderhallsplanClient({
           ))}
         </div>
 
+        <div className="sans" style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+          {(["plan", "historik"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setVisning(v)}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 6,
+                border: "none",
+                borderBottom: visning === v ? "2px solid #c1592c" : "2px solid transparent",
+                background: "transparent",
+                color: visning === v ? "#2b2620" : MUTED,
+                fontSize: 13,
+                cursor: "pointer",
+                fontWeight: visning === v ? 600 : 500,
+              }}
+            >
+              {v === "plan" ? "Plan" : "Historik"}
+            </button>
+          ))}
+        </div>
+
         <div
           style={{
+            display: visning === "plan" ? "block" : "none",
             background: "#fff",
             border: "1px solid #e4ddd0",
             borderRadius: 8,
@@ -472,27 +690,58 @@ export function UnderhallsplanClient({
             marginBottom: 20,
           }}
         >
-          <div className="sans" style={{ fontSize: 13, fontWeight: 600, color: "#3d382f", marginBottom: 8 }}>
-            Total kostnad per år, {CURRENT_YEAR}–{CHART_TO_YEAR} ({fastighetFilter}) — underlag till budget
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+            <div className="sans" style={{ fontSize: 13, fontWeight: 600, color: "#3d382f" }}>
+              Total kostnad per år, {CURRENT_YEAR}–{chartToYear} ({fastighetFilter}) — underlag till budget
+            </div>
+            <select
+              value={grafAr}
+              onChange={(e) => setGrafAr(Number(e.target.value))}
+              className="sans"
+              style={{ fontSize: 12, padding: "3px 6px", border: "1px solid #d8cfbe", borderRadius: 4, color: "#3d382f" }}
+            >
+              <option value={5}>5 år</option>
+              <option value={10}>10 år</option>
+              <option value={20}>20 år</option>
+              <option value={30}>30 år</option>
+              <option value={50}>50 år</option>
+            </select>
           </div>
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee5d5" />
-              <XAxis dataKey="ar" tick={{ fontSize: 11, fontFamily: "sans-serif" }} interval={1} />
-              <YAxis tickFormatter={krCompact} tick={{ fontSize: 11, fontFamily: "sans-serif" }} width={55} />
-              <Tooltip
-                formatter={(v) => (v === undefined ? "" : kr(Number(v)))}
-                labelFormatter={(l) => `År ${l}`}
-                contentStyle={{ fontFamily: "sans-serif", fontSize: 12 }}
-              />
-              <Legend wrapperStyle={{ fontFamily: "sans-serif", fontSize: 12 }} />
-              <Bar dataKey="Nuvarande plan" fill="#3d5b3f" radius={[3, 3, 0, 0]} />
-              {hasPending && <Bar dataKey="Simulerad ändring" fill="#c1592c" radius={[3, 3, 0, 0]} />}
-            </BarChart>
+            {hasPending ? (
+              <BarChart data={chartDataJamfor} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eee5d5" />
+                <XAxis dataKey="ar" tick={{ fontSize: 11, fontFamily: "sans-serif" }} interval={1} />
+                <YAxis tickFormatter={krCompact} tick={{ fontSize: 11, fontFamily: "sans-serif" }} width={55} />
+                <Tooltip
+                  formatter={(v) => (v === undefined ? "" : kr(Number(v)))}
+                  labelFormatter={(l) => `År ${l}`}
+                  contentStyle={{ fontFamily: "sans-serif", fontSize: 12 }}
+                />
+                <Legend wrapperStyle={{ fontFamily: "sans-serif", fontSize: 12 }} />
+                <Bar dataKey="Nuvarande plan" fill="#3d5b3f" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Simulerad ändring" fill="#c1592c" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            ) : (
+              <BarChart data={staplatData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eee5d5" />
+                <XAxis dataKey="ar" tick={{ fontSize: 11, fontFamily: "sans-serif" }} interval={1} />
+                <YAxis tickFormatter={krCompact} tick={{ fontSize: 11, fontFamily: "sans-serif" }} width={55} />
+                <Tooltip
+                  formatter={(v) => (v === undefined ? "" : kr(Number(v)))}
+                  labelFormatter={(l) => `År ${l}`}
+                  contentStyle={{ fontFamily: "sans-serif", fontSize: 12 }}
+                />
+                <Legend wrapperStyle={{ fontFamily: "sans-serif", fontSize: 12 }} />
+                {alleKategoriNamn.map((k) => (
+                  <Bar key={k} dataKey={k} stackId="a" fill={kategoriColor(k)} />
+                ))}
+              </BarChart>
+            )}
           </ResponsiveContainer>
           <div className="sans" style={{ fontSize: 12, color: MUTED, padding: "4px 0 14px" }}>
-            Visar planens totala kostnad (investering + underhåll) per år. Fördelning på faktisk finansiering
-            (avgift, lån, kassa) hanteras i föreningens ordinarie budgetprocess, inte här.
+            Visar planens totala kostnad (investering + underhåll) per år, färgad per kategori. Fördelning på
+            faktisk finansiering (avgift, lån, kassa) hanteras i föreningens ordinarie budgetprocess, inte här.
           </div>
         </div>
 
@@ -575,21 +824,59 @@ export function UnderhallsplanClient({
         {saveError && <div className="sans" style={{ fontSize: 13, color: "#9a3232", marginBottom: 12 }}>{saveError}</div>}
         {savedNote && <div className="sans" style={{ fontSize: 13, color: "#3d5b3f", marginBottom: 12 }}>{savedNote}</div>}
 
-        <div className="sans hidden sm:grid" style={{ gridTemplateColumns: "70px 120px 1fr 100px 100px 90px 30px", gap: 8, padding: "0 14px 8px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: MUTED }}>
+        {visning === "plan" && kanRedigera && (
+          <div style={{ marginBottom: 16 }}>
+            {visaNyForm ? (
+              <NyPostForm
+                fastigheter={fastigheter}
+                kategorier={kategorier}
+                currentProfilId={currentProfilId}
+                onSkapad={(post) => {
+                  setItems((prev) => [...prev, post]);
+                  setDraft((prev) => [...prev, post]);
+                  setVisaNyForm(false);
+                }}
+                onAvbryt={() => setVisaNyForm(false)}
+              />
+            ) : (
+              <button
+                onClick={() => setVisaNyForm(true)}
+                className="sans"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "8px 14px",
+                  borderRadius: 6,
+                  border: "1px solid #d8cfbe",
+                  background: "#fff",
+                  cursor: "pointer",
+                  fontSize: 13,
+                }}
+              >
+                <Plus size={14} /> Lägg till ny post
+              </button>
+            )}
+          </div>
+        )}
+
+        {visning === "plan" && (
+        <>
+        <div className="sans hidden sm:grid" style={{ gridTemplateColumns: ROW_COLS, gap: 8, padding: "0 14px 8px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: MUTED }}>
           <div>År</div>
           <div>Fastighet</div>
           <div>Åtgärd</div>
           <div style={{ textAlign: "right" }}>Investering</div>
           <div style={{ textAlign: "right" }}>Underhåll</div>
           <div>Status</div>
-          <div />
+          <div style={{ textAlign: "right" }}>Redigera</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {grouped.map(({ ar, kategorier }) => {
+          {grouped.map(({ ar, kategorier: katGrupper }) => {
             const expanded = expandedYears.has(ar);
-            const antal = kategorier.reduce((s, [, items]) => s + items.length, 0);
-            const summa = kategorier.reduce(
+            const antal = katGrupper.reduce((s, [, items]) => s + items.length, 0);
+            const summa = katGrupper.reduce(
               (s, [, items]) => s + items.reduce((s2, i) => s2 + i.investering + i.underhall, 0),
               0
             );
@@ -623,38 +910,245 @@ export function UnderhallsplanClient({
                 </button>
                 {expanded && (
                   <div>
-                    {kategorier.map(([kategori, items]) => (
-                      <div key={kategori}>
-                        <div
-                          className="sans"
-                          style={{
-                            padding: "6px 14px",
-                            fontSize: 11,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.06em",
-                            color: MUTED,
-                            background: "#fbf9f5",
-                            borderTop: "1px solid #eee5d5",
-                          }}
-                        >
-                          {kategori}
+                    {katGrupper.map(([kategori, katItems]) => {
+                      const nyckel = `${ar}::${kategori}`;
+                      const katExpanded = !collapsedKategorier.has(nyckel);
+                      const katSumma = katItems.reduce((s, i) => s + i.investering + i.underhall, 0);
+                      return (
+                        <div key={kategori}>
+                          <button
+                            onClick={() => toggleKategori(nyckel)}
+                            className="sans"
+                            style={{
+                              width: "100%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              padding: "6px 14px",
+                              border: "none",
+                              borderTop: "1px solid #eee5d5",
+                              background: "#fbf9f5",
+                              cursor: "pointer",
+                              fontSize: 11,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.06em",
+                              color: MUTED,
+                            }}
+                          >
+                            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              {katExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                              <span style={{ width: 8, height: 8, borderRadius: "50%", background: kategoriColor(kategori) }} />
+                              {kategori} ({katItems.length})
+                            </span>
+                            <span>{krCompact(katSumma)}</span>
+                          </button>
+                          {katExpanded && katItems.map((item) => <Rad key={item.id} item={item} />)}
                         </div>
-                        {items.map((item) => (
-                          <Rad key={item.id} item={item} />
-                        ))}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
             );
           })}
         </div>
+        </>
+        )}
+
+        {visning === "historik" && <Historik items={visibleItems} />}
 
         <div className="sans" style={{ fontSize: 12, color: MUTED, marginTop: 14, lineHeight: 1.6 }}>
           Data importerad från Planima-exporten (85 planerade åtgärder, 2025–2071). Fastighetstaggning bygger på nämnda &quot;gård Grön&quot;/&quot;gård Brun&quot; i åtgärdsnamnen — övriga poster är tillsvidare taggade som Gemensam i väntan på fördelningsnyckel.
         </div>
       </div>
     </div>
+  );
+}
+
+function Historik({ items }: { items: UhPost[] }) {
+  const genomforda = useMemo(
+    () =>
+      items
+        .filter((i) => i.genomford_datum)
+        .sort((a, b) => (b.genomford_datum ?? "").localeCompare(a.genomford_datum ?? "")),
+    [items]
+  );
+
+  if (genomforda.length === 0) {
+    return (
+      <div className="sans" style={{ background: "#fff", border: "1px solid #e4ddd0", borderRadius: 8, padding: 20, fontSize: 13, color: MUTED }}>
+        Inga genomförda åtgärder registrerade ännu. Markera en post som &quot;genomförd&quot; i planen för att se den här.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: "#fff", border: "1px solid #e4ddd0", borderRadius: 8, overflow: "hidden" }}>
+      <div className="sans hidden sm:grid" style={{ gridTemplateColumns: "110px 120px 1fr 100px 100px 80px", gap: 8, padding: "8px 14px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: MUTED, borderBottom: "1px solid #eee5d5" }}>
+        <div>Genomfört</div>
+        <div>Fastighet</div>
+        <div>Åtgärd</div>
+        <div style={{ textAlign: "right" }}>Investering</div>
+        <div style={{ textAlign: "right" }}>Underhåll</div>
+        <div>Återkommer</div>
+      </div>
+      {genomforda.map((item) => {
+        const c = FASTIGHET_COLOR[item.fastighet_namn ?? "Gemensam"] ?? FASTIGHET_COLOR.Gemensam;
+        return (
+          <div key={item.id} className="sans" style={{ borderBottom: "1px solid #f3eee3", padding: "10px 14px", fontSize: 13 }}>
+            <div className="sm:hidden">
+              <div style={{ fontWeight: 600 }}>{item.genomford_datum}</div>
+              <div style={{ marginTop: 2 }}>{item.namn}</div>
+              <div style={{ fontSize: 11, color: MUTED }}>
+                {item.fastighet_namn} · {item.kategori_namn} · ursprungligen {item.ar}
+              </div>
+              <div style={{ marginTop: 4, display: "flex", gap: 14 }}>
+                <span>{item.investering ? "Inv " + krCompact(item.investering) : "—"}</span>
+                <span>{item.underhall ? "Uh " + krCompact(item.underhall) : "—"}</span>
+              </div>
+            </div>
+            <div className="hidden sm:grid" style={{ gridTemplateColumns: "110px 120px 1fr 100px 100px 80px", gap: 8, alignItems: "center" }}>
+              <div>{item.genomford_datum}</div>
+              <div>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: c.bg, color: c.text, borderRadius: 12, padding: "2px 8px", fontSize: 11 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: c.dot }} />
+                  {item.fastighet_namn}
+                </span>
+              </div>
+              <div>
+                {item.namn}
+                <div style={{ fontSize: 11, color: MUTED }}>
+                  {item.kategori_namn} · ursprungligen planerad {item.ar}
+                </div>
+              </div>
+              <div style={{ textAlign: "right", color: item.investering ? "#2b2620" : MUTED_DASH }}>
+                {item.investering ? krCompact(item.investering) : "—"}
+              </div>
+              <div style={{ textAlign: "right", color: item.underhall ? "#2b2620" : MUTED_DASH }}>
+                {item.underhall ? krCompact(item.underhall) : "—"}
+              </div>
+              <div style={{ fontSize: 12, color: MUTED }}>
+                {item.aterkommande_intervall_ar ? `om ${item.aterkommande_intervall_ar} år` : "—"}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function NyPostForm({
+  fastigheter,
+  kategorier,
+  currentProfilId,
+  onSkapad,
+  onAvbryt,
+}: {
+  fastigheter: ListPost[];
+  kategorier: ListPost[];
+  currentProfilId: string | null;
+  onSkapad: (post: UhPost) => void;
+  onAvbryt: () => void;
+}) {
+  const [fastighetId, setFastighetId] = useState("");
+  const [kategoriId, setKategoriId] = useState("");
+  const [namn, setNamn] = useState("");
+  const [lage, setLage] = useState("");
+  const [ar, setAr] = useState(String(CURRENT_YEAR));
+  const [investering, setInvestering] = useState("0");
+  const [underhall, setUnderhall] = useState("0");
+  const [typ, setTyp] = useState<"komponent" | "löpande_buffert">("komponent");
+  const [sparar, setSparar] = useState(false);
+  const [fel, setFel] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!namn.trim()) return;
+    setSparar(true);
+    setFel("");
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("uh_poster")
+      .insert({
+        fastighet_id: fastighetId || null,
+        kategori_id: kategoriId || null,
+        lage: lage || null,
+        namn: namn.trim(),
+        ar: Number(ar),
+        investering: Number(investering) || 0,
+        underhall: Number(underhall) || 0,
+        typ,
+        status: "godkänd",
+        skapad_av: currentProfilId,
+      })
+      .select(
+        "id, fastighet_id, kategori_id, lage, namn, ar, investering, underhall, typ, status, genomford_datum, aterkommande_intervall_ar"
+      )
+      .single();
+
+    if (error) {
+      setFel(error.message);
+      setSparar(false);
+      return;
+    }
+
+    const fastighet = fastigheter.find((f) => f.id === fastighetId);
+    const kategori = kategorier.find((k) => k.id === kategoriId);
+    onSkapad({ ...data, fastighet_namn: fastighet?.namn ?? "Gemensam", kategori_namn: kategori?.namn ?? null });
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="sans"
+      style={{ background: "#fff", border: "1px solid #e4ddd0", borderRadius: 8, padding: 14, display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}
+    >
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <select value={fastighetId} onChange={(e) => setFastighetId(e.target.value)} style={{ padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}>
+          <option value="">Gemensam</option>
+          {fastigheter.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.namn}
+            </option>
+          ))}
+        </select>
+        <select value={kategoriId} onChange={(e) => setKategoriId(e.target.value)} style={{ padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}>
+          <option value="">Ingen kategori</option>
+          {kategorier.map((k) => (
+            <option key={k.id} value={k.id}>
+              {k.namn}
+            </option>
+          ))}
+        </select>
+        <select value={typ} onChange={(e) => setTyp(e.target.value as "komponent" | "löpande_buffert")} style={{ padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}>
+          <option value="komponent">Komponent</option>
+          <option value="löpande_buffert">Löpande buffert</option>
+        </select>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <input value={namn} onChange={(e) => setNamn(e.target.value)} placeholder="Åtgärd" style={{ flex: "1 1 200px", padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+        <input value={lage} onChange={(e) => setLage(e.target.value)} placeholder="Läge (valfritt)" style={{ flex: "1 1 140px", padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <input type="number" value={ar} onChange={(e) => setAr(e.target.value)} placeholder="År" style={{ width: 90, padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+        <input type="number" value={investering} onChange={(e) => setInvestering(e.target.value)} placeholder="Investering" style={{ width: 120, padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+        <input type="number" value={underhall} onChange={(e) => setUnderhall(e.target.value)} placeholder="Underhåll" style={{ width: 120, padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+      </div>
+      {fel && <p style={{ color: "#9a3232", fontSize: 12 }}>{fel}</p>}
+      <div style={{ display: "flex", gap: 8 }}>
+        <button
+          type="submit"
+          disabled={sparar || !namn.trim()}
+          style={{ background: "#c1592c", color: "#fff", border: "none", borderRadius: 6, padding: "8px 14px", cursor: "pointer", opacity: sparar ? 0.6 : 1 }}
+        >
+          {sparar ? "Sparar…" : "Skapa post"}
+        </button>
+        <button type="button" onClick={onAvbryt} style={{ border: "1px solid #d8cfbe", background: "#fff", borderRadius: 6, padding: "8px 14px", cursor: "pointer" }}>
+          Avbryt
+        </button>
+      </div>
+    </form>
   );
 }
