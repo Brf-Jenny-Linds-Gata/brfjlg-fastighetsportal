@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ProfilRoll } from "@/lib/supabase/profile";
+import { Hjalp } from "@/components/Hjalp";
 
 type AdminUser = {
   id: string;
@@ -71,7 +72,10 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
           ← Startsida
         </Link>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-xl font-semibold text-stone-800">Användarhantering</h1>
+          <h1 className="flex items-center gap-2 text-xl font-semibold text-stone-800">
+            Användarhantering
+            <Hjalp text="Bjud in nya användare med e-post, namn och roll. Byt roll för befintliga via rullistan. 'Ta bort' raderar kontot helt (går inte att ångra) — knappen syns inte på ditt eget konto." />
+          </h1>
           <button
             onClick={() => setVisaInbjudan((v) => !v)}
             className="rounded-md bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700"

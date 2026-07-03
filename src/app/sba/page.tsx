@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/profile";
 import { farSe } from "@/lib/permissions";
+import { Hjalp } from "@/components/Hjalp";
 import type { SbaKontroll } from "@/lib/supabase/types";
 
 export default async function SbaPage() {
@@ -48,8 +49,9 @@ export default async function SbaPage() {
             <Link href="/" className="text-sm text-stone-600 underline hover:text-stone-800">
               ← Startsida
             </Link>
-            <h1 className="mt-1 text-xl font-semibold text-stone-800">
+            <h1 className="mt-1 flex items-center gap-2 text-xl font-semibold text-stone-800">
               Systematiskt brandskyddsarbete
+              <Hjalp text="Lista över alla SBA-kontroller (kvartalsvisa brandskyddsronderingar) per fastighet. Klicka på en rad för att se/fylla i checklistan. En kontroll som markerats klar går inte att ändra." />
             </h1>
           </div>
           {kanSkapa && (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCurrentProfile } from "@/lib/supabase/profile";
 import { farSe } from "@/lib/permissions";
+import { Hjalp } from "@/components/Hjalp";
 
 export default async function Home() {
   const profil = await getCurrentProfile();
@@ -16,7 +17,10 @@ export default async function Home() {
     <div className="min-h-screen bg-stone-50 px-6 py-10">
       <div className="mx-auto max-w-3xl">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-stone-800">BrfJLG Fastighetsportal</h1>
+          <h1 className="flex items-center gap-2 text-xl font-semibold text-stone-800">
+            BrfJLG Fastighetsportal
+            <Hjalp text="Startsidan visar de delar av appen din roll har tillgång till. Styrelsen ser allt, brandskyddsansvarig ser SBA, medlemmar ser bara underhållsplanen (läsläge), och entreprenörer ser bara anmärkningar att åtgärda." />
+          </h1>
           <form action="/auth/logout" method="post">
             <button
               type="submit"

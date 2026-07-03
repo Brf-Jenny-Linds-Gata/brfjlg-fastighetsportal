@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { Hjalp } from "@/components/Hjalp";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -46,7 +47,10 @@ export function NyKontrollForm({ fastigheter }: { fastigheter: { id: string; nam
         <Link href="/sba" className="text-sm text-stone-600 underline hover:text-stone-700">
           ← Tillbaka
         </Link>
-        <h1 className="mt-1 text-xl font-semibold text-stone-800">Ny SBA-kontroll</h1>
+        <h1 className="mt-1 flex items-center gap-2 text-xl font-semibold text-stone-800">
+          Ny SBA-kontroll
+          <Hjalp text="Skapar en ny kvartalsvis brandskyddskontroll för vald fastighet. Det går bara att ha en kontroll per fastighet/kvartal/år — checklistan fylls i på nästa sida." />
+        </h1>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-lg border border-stone-200 bg-white p-6">
           <div>

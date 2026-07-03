@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ImageIcon, Paperclip, Printer } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Hjalp } from "@/components/Hjalp";
 import type {
   SbaAnmarkning,
   SbaKontroll,
@@ -362,8 +363,11 @@ export function KontrollClient({
           ← Alla kontroller
         </Link>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-lg font-semibold text-stone-800 sm:text-xl">
+          <h1 className="flex items-center gap-2 text-lg font-semibold text-stone-800 sm:text-xl">
             {kontroll.fastighet_namn} · Q{kontroll.kvartal} {kontroll.ar}
+            <span className="print:hidden">
+              <Hjalp text="Bocka av varje checklistpunkt som Godkänd/Ej godkänd. Lägg till en anmärkning direkt under en punkt om något behöver åtgärdas. När allt är ifyllt, klicka 'Markera kontrollen klar' längst ner — då låses protokollet och kan inte längre ändras." />
+            </span>
           </h1>
           <div className="flex items-center gap-2">
             <span

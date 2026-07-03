@@ -25,6 +25,7 @@ import {
   FileDown,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Hjalp } from "@/components/Hjalp";
 import type { UhPost } from "@/lib/supabase/types";
 
 const FASTIGHET_COLOR: Record<string, { dot: string; bg: string; text: string }> = {
@@ -734,8 +735,9 @@ export function UnderhallsplanClient({
           >
             Brf Jenny Linds Gata · Spetshandsken 1 &amp; Tumvanten 1
           </div>
-          <h1 style={{ fontSize: 26, margin: "4px 0 0", fontWeight: 400 }}>
+          <h1 style={{ fontSize: 26, margin: "4px 0 0", fontWeight: 400, display: "flex", alignItems: "center", gap: 8 }}>
             Underhållsplan &amp; ekonomisimulering
+            <Hjalp text="Plan visar kommande åtgärder grupperade per år och kategori. Historik visar redan genomförda åtgärder. Styrelsen kan flytta poster mellan år, redigera kostnad/kategori, lägga till nya poster och markera poster som genomförda (med valfritt återkommande intervall)." />
           </h1>
           {senastUppdaterad && (
             <p className="sans" style={{ fontSize: 12, color: MUTED, margin: "6px 0 0" }}>
