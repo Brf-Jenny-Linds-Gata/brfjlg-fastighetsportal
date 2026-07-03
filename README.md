@@ -136,6 +136,15 @@ All åtkomst styrs av Row Level Security-policyer (definierade i
 migrationsfilerna) – inte av applikationskoden. Det betyder att samma
 regler gäller oavsett vilket verktyg som pratar med databasen.
 
+**Historik-data:** de 17 äldsta `uh_poster`-raderna med `genomford_datum`
+ifyllt kommer inte från appen, utan importerades en gång 2026-07-03 från
+föreningens ursprungliga Planima/Excel-underhållsplan (kolumnerna
+"Senast", "Nästa", "Livslängd (år)"). Om fler historiska Excel-källor
+dyker upp senare är mönstret: matcha rader mot `uh_poster.namn`, sätt
+`genomford_datum` (år, dag/månad okänd → `-01-01` används som platshållare)
+och `aterkommande_intervall_ar`, infoga som nya rader (aldrig skriv över
+en befintlig framtida planerad rad).
+
 ## Behörigheter
 
 Fyra fasta roller (Postgres-enum `profil_roll`): `styrelse`,
@@ -226,6 +235,11 @@ De flesta sidor blandar Tailwind-klasser (SBA-sidorna, formulär) med
 handskrivna inline-stilar (underhållsplan-sidan, som är porterad från en
 tidigare fristående designprototyp). Följ respektive fils befintliga
 mönster snarare än att blanda friskt.
+
+**`src/components/Hjalp.tsx`** – återanvändbar "?"-ikon med hovertext,
+placerad bredvid varje sidas `<h1>`. Sidspecifik text skrivs inline där
+komponenten används, ingen central texttabell — lägg till en ny
+`<Hjalp text="..." />` när en ny sida byggs.
 
 ## Kom igång lokalt
 
