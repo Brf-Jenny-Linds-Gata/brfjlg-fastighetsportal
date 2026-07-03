@@ -190,6 +190,309 @@ function groupByYearAndKategori(items: UhPost[]) {
 
 type ListPost = { id: string; namn: string };
 
+// Modulnivå (inte definierad inne i UnderhallsplanClient) med avsikt:
+// annars skapas en ny Rad-funktionsidentitet vid varje omrendering
+// (t.ex. varje tangenttryckning i redigeringsfälten), och React
+// avmonterar/monterar hela raden på nytt istället för att bara
+// uppdatera — vilket gör att inputfältet tappar fokus efter varje
+// tecken.
+function Rad({
+  item,
+  items,
+  kanRedigera,
+  editingId,
+  editYear,
+  setEditYear,
+  startEdit,
+  commitEdit,
+  cancelEdit,
+  redigerarId,
+  redigerNamn,
+  setRedigerNamn,
+  redigerKategoriId,
+  setRedigerKategoriId,
+  redigerInvestering,
+  setRedigerInvestering,
+  redigerUnderhall,
+  setRedigerUnderhall,
+  kategorier,
+  startRedigera,
+  sparaRedigera,
+  avbrytRedigera,
+  genomforId,
+  setGenomforId,
+  genomforIntervall,
+  setGenomforIntervall,
+  markeraGenomford,
+}: {
+  item: UhPost;
+  items: UhPost[];
+  kanRedigera: boolean;
+  editingId: string | null;
+  editYear: string;
+  setEditYear: (v: string) => void;
+  startEdit: (item: UhPost) => void;
+  commitEdit: (item: UhPost) => void;
+  cancelEdit: () => void;
+  redigerarId: string | null;
+  redigerNamn: string;
+  setRedigerNamn: (v: string) => void;
+  redigerKategoriId: string;
+  setRedigerKategoriId: (v: string) => void;
+  redigerInvestering: string;
+  setRedigerInvestering: (v: string) => void;
+  redigerUnderhall: string;
+  setRedigerUnderhall: (v: string) => void;
+  kategorier: ListPost[];
+  startRedigera: (item: UhPost) => void;
+  sparaRedigera: (item: UhPost) => void;
+  avbrytRedigera: () => void;
+  genomforId: string | null;
+  setGenomforId: (v: string | null) => void;
+  genomforIntervall: string;
+  setGenomforIntervall: (v: string) => void;
+  markeraGenomford: (item: UhPost) => void;
+}) {
+  const c = FASTIGHET_COLOR[item.fastighet_namn ?? "Gemensam"] ?? FASTIGHET_COLOR.Gemensam;
+  const isEditing = editingId === item.id;
+  const isRedigering = redigerarId === item.id;
+  const changed = items.find((i) => i.id === item.id)?.ar !== item.ar;
+  const kanFlyttas = kanRedigera && item.typ !== "löpande_buffert";
+  const arGenomford = !!item.genomford_datum;
+
+  if (isRedigering) {
+    return (
+      <div className="sans" style={{ borderBottom: "1px solid #f3eee3", padding: "10px 14px", background: "#fdf6ee", fontSize: 13 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          <input
+            value={redigerNamn}
+            onChange={(e) => setRedigerNamn(e.target.value)}
+            placeholder="Åtgärd"
+            style={{ flex: "1 1 200px", padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
+          />
+          <select
+            value={redigerKategoriId}
+            onChange={(e) => setRedigerKategoriId(e.target.value)}
+            style={{ padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
+          >
+            <option value="">Ingen kategori</option>
+            {kategorier.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.namn}
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            value={redigerInvestering}
+            onChange={(e) => setRedigerInvestering(e.target.value)}
+            placeholder="Investering"
+            style={{ width: 110, padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
+          />
+          <input
+            type="number"
+            value={redigerUnderhall}
+            onChange={(e) => setRedigerUnderhall(e.target.value)}
+            placeholder="Underhåll"
+            style={{ width: 110, padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
+          />
+          <button onClick={() => sparaRedigera(item)} style={{ border: "none", background: "none", cursor: "pointer", color: "#3d5b3f" }}>
+            <Check size={16} />
+          </button>
+          <button onClick={avbrytRedigera} style={{ border: "none", background: "none", cursor: "pointer", color: "#9a3232" }}>
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const fastighetBadge = (
+    <span
+      className="sans"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        background: c.bg,
+        color: c.text,
+        borderRadius: 12,
+        padding: "2px 8px",
+        fontSize: 11,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <span style={{ width: 7, height: 7, borderRadius: "50%", background: c.dot }} />
+      {item.fastighet_namn}
+    </span>
+  );
+
+  const arVisning = isEditing ? (
+    <input
+      autoFocus
+      type="number"
+      value={editYear}
+      onChange={(e) => setEditYear(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commitEdit(item);
+        if (e.key === "Escape") cancelEdit();
+      }}
+      className="sans"
+      style={{ width: 60, padding: "3px 5px", border: "1px solid #c1592c", borderRadius: 4 }}
+    />
+  ) : (
+    <span style={{ fontWeight: changed ? 700 : 400 }}>{item.ar}</span>
+  );
+
+  const knappStil = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    border: "1px solid #d8cfbe",
+    borderRadius: 6,
+    background: "#fff",
+    color: "#3d382f",
+    padding: "3px 8px",
+    fontSize: 11,
+    cursor: "pointer",
+  } as const;
+
+  const atgardsKnappar = (
+    <div className="sans" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      {kanFlyttas &&
+        (isEditing ? (
+          <>
+            <button onClick={() => commitEdit(item)} style={{ border: "none", background: "none", cursor: "pointer", color: "#3d5b3f" }}>
+              <Check size={15} />
+            </button>
+            <button onClick={cancelEdit} style={{ border: "none", background: "none", cursor: "pointer", color: "#9a3232" }}>
+              <X size={15} />
+            </button>
+          </>
+        ) : (
+          <button onClick={() => startEdit(item)} style={knappStil} title="Flytta åtgärden till ett annat år">
+            <CalendarClock size={13} /> Flytta år
+          </button>
+        ))}
+      {kanRedigera && !isEditing && (
+        <button
+          onClick={() => startRedigera(item)}
+          style={knappStil}
+          title="Redigera namn, kategori och kostnad"
+        >
+          <SquarePen size={13} /> Redigera
+        </button>
+      )}
+    </div>
+  );
+
+  const genomfordAktion = kanRedigera ? (
+    arGenomford ? (
+      <span
+        className="sans"
+        style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "#3d5b3f" }}
+      >
+        <CheckCircle2 size={13} /> Genomförd {item.genomford_datum}
+        {item.aterkommande_intervall_ar ? ` · åter ${item.ar + item.aterkommande_intervall_ar}` : ""}
+      </span>
+    ) : genomforId === item.id ? (
+      <div className="sans" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <input
+          type="number"
+          placeholder="Återkom om X år"
+          value={genomforIntervall}
+          onChange={(e) => setGenomforIntervall(e.target.value)}
+          style={{ width: 120, padding: "3px 5px", border: "1px solid #d8cfbe", borderRadius: 4, fontSize: 12 }}
+        />
+        <button
+          onClick={() => markeraGenomford(item)}
+          className="rounded-md bg-stone-800 px-2 py-1 text-xs text-white hover:bg-stone-700"
+        >
+          Spara
+        </button>
+        <button
+          onClick={() => {
+            setGenomforId(null);
+            setGenomforIntervall("");
+          }}
+          className="rounded-md border border-stone-300 px-2 py-1 text-xs hover:bg-stone-50"
+        >
+          Avbryt
+        </button>
+      </div>
+    ) : (
+      <button
+        onClick={() => setGenomforId(item.id)}
+        className="sans"
+        style={{ fontSize: 11, color: MUTED, border: "1px solid #d8cfbe", borderRadius: 12, padding: "2px 8px", background: "#fff", cursor: "pointer" }}
+      >
+        Markera genomförd
+      </button>
+    )
+  ) : arGenomford ? (
+    <span className="sans" style={{ fontSize: 11, color: "#3d5b3f" }}>
+      Genomförd {item.genomford_datum}
+    </span>
+  ) : null;
+
+  return (
+    <div
+      className="row"
+      style={{
+        borderBottom: "1px solid #f3eee3",
+        background: changed ? "#fdf6ee" : "transparent",
+        padding: "10px 14px",
+      }}
+    >
+      {/* Mobil: stapeltkort */}
+      <div className="sans sm:hidden" style={{ fontSize: 13 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {arVisning}
+          {fastighetBadge}
+        </div>
+        <div style={{ marginTop: 4 }}>
+          {item.namn}
+          <div style={{ fontSize: 11, color: MUTED }}>
+            {item.kategori_namn} · {item.lage}
+          </div>
+        </div>
+        <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 14 }}>
+            <span style={{ color: item.investering ? "#2b2620" : MUTED_DASH }}>
+              {item.investering ? "Inv " + krCompact(item.investering) : "—"}
+            </span>
+            <span style={{ color: item.underhall ? "#2b2620" : MUTED_DASH }}>
+              {item.underhall ? "Uh " + krCompact(item.underhall) : "—"}
+            </span>
+          </div>
+          {atgardsKnappar}
+        </div>
+        {genomfordAktion && <div style={{ marginTop: 6 }}>{genomfordAktion}</div>}
+      </div>
+
+      {/* Desktop/tablet: rad-layout */}
+      <div className="sans hidden sm:grid" style={{ gridTemplateColumns: ROW_COLS, gap: 8, alignItems: "center", fontSize: 13 }}>
+        <div>{arVisning}</div>
+        <div>{fastighetBadge}</div>
+        <div>
+          {item.namn}
+          <div style={{ fontSize: 11, color: MUTED }}>
+            {item.kategori_namn} · {item.lage}
+          </div>
+        </div>
+        <div style={{ textAlign: "right", color: item.investering ? "#2b2620" : MUTED_DASH }}>
+          {item.investering ? krCompact(item.investering) : "—"}
+        </div>
+        <div style={{ textAlign: "right", color: item.underhall ? "#2b2620" : MUTED_DASH, paddingRight: 16 }}>
+          {item.underhall ? krCompact(item.underhall) : "—"}
+        </div>
+        <div>{genomfordAktion}</div>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>{atgardsKnappar}</div>
+      </div>
+    </div>
+  );
+}
+
 export function UnderhallsplanClient({
   initialItems,
   kanRedigera,
@@ -458,247 +761,6 @@ export function UnderhallsplanClient({
   const sammanfattningItems = visning === "plan" ? planItems : historikItems;
   const totalInvestering = sammanfattningItems.reduce((s, i) => s + i.investering, 0);
   const totalUnderhall = sammanfattningItems.reduce((s, i) => s + i.underhall, 0);
-
-  function Rad({ item }: { item: UhPost }) {
-    const c = FASTIGHET_COLOR[item.fastighet_namn ?? "Gemensam"] ?? FASTIGHET_COLOR.Gemensam;
-    const isEditing = editingId === item.id;
-    const isRedigering = redigerarId === item.id;
-    const changed = items.find((i) => i.id === item.id)?.ar !== item.ar;
-    const kanFlyttas = kanRedigera && item.typ !== "löpande_buffert";
-    const arGenomford = !!item.genomford_datum;
-
-    if (isRedigering) {
-      return (
-        <div className="sans" style={{ borderBottom: "1px solid #f3eee3", padding: "10px 14px", background: "#fdf6ee", fontSize: 13 }}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            <input
-              value={redigerNamn}
-              onChange={(e) => setRedigerNamn(e.target.value)}
-              placeholder="Åtgärd"
-              style={{ flex: "1 1 200px", padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
-            />
-            <select
-              value={redigerKategoriId}
-              onChange={(e) => setRedigerKategoriId(e.target.value)}
-              style={{ padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
-            >
-              <option value="">Ingen kategori</option>
-              {kategorier.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.namn}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              value={redigerInvestering}
-              onChange={(e) => setRedigerInvestering(e.target.value)}
-              placeholder="Investering"
-              style={{ width: 110, padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
-            />
-            <input
-              type="number"
-              value={redigerUnderhall}
-              onChange={(e) => setRedigerUnderhall(e.target.value)}
-              placeholder="Underhåll"
-              style={{ width: 110, padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
-            />
-            <button onClick={() => sparaRedigera(item)} style={{ border: "none", background: "none", cursor: "pointer", color: "#3d5b3f" }}>
-              <Check size={16} />
-            </button>
-            <button onClick={avbrytRedigera} style={{ border: "none", background: "none", cursor: "pointer", color: "#9a3232" }}>
-              <X size={16} />
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    const fastighetBadge = (
-      <span
-        className="sans"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          background: c.bg,
-          color: c.text,
-          borderRadius: 12,
-          padding: "2px 8px",
-          fontSize: 11,
-          whiteSpace: "nowrap",
-        }}
-      >
-        <span style={{ width: 7, height: 7, borderRadius: "50%", background: c.dot }} />
-        {item.fastighet_namn}
-      </span>
-    );
-
-    const arVisning = isEditing ? (
-      <input
-        autoFocus
-        type="number"
-        value={editYear}
-        onChange={(e) => setEditYear(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commitEdit(item);
-          if (e.key === "Escape") cancelEdit();
-        }}
-        className="sans"
-        style={{ width: 60, padding: "3px 5px", border: "1px solid #c1592c", borderRadius: 4 }}
-      />
-    ) : (
-      <span style={{ fontWeight: changed ? 700 : 400 }}>{item.ar}</span>
-    );
-
-    const knappStil = {
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 4,
-      border: "1px solid #d8cfbe",
-      borderRadius: 6,
-      background: "#fff",
-      color: "#3d382f",
-      padding: "3px 8px",
-      fontSize: 11,
-      cursor: "pointer",
-    } as const;
-
-    const atgardsKnappar = (
-      <div className="sans" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {kanFlyttas &&
-          (isEditing ? (
-            <>
-              <button onClick={() => commitEdit(item)} style={{ border: "none", background: "none", cursor: "pointer", color: "#3d5b3f" }}>
-                <Check size={15} />
-              </button>
-              <button onClick={cancelEdit} style={{ border: "none", background: "none", cursor: "pointer", color: "#9a3232" }}>
-                <X size={15} />
-              </button>
-            </>
-          ) : (
-            <button onClick={() => startEdit(item)} style={knappStil} title="Flytta åtgärden till ett annat år">
-              <CalendarClock size={13} /> Flytta år
-            </button>
-          ))}
-        {kanRedigera && !isEditing && (
-          <button
-            onClick={() => startRedigera(item)}
-            style={knappStil}
-            title="Redigera namn, kategori och kostnad"
-          >
-            <SquarePen size={13} /> Redigera
-          </button>
-        )}
-      </div>
-    );
-
-    const genomfordAktion = kanRedigera ? (
-      arGenomford ? (
-        <span
-          className="sans"
-          style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "#3d5b3f" }}
-        >
-          <CheckCircle2 size={13} /> Genomförd {item.genomford_datum}
-          {item.aterkommande_intervall_ar ? ` · åter ${item.ar + item.aterkommande_intervall_ar}` : ""}
-        </span>
-      ) : genomforId === item.id ? (
-        <div className="sans" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <input
-            type="number"
-            placeholder="Återkom om X år"
-            value={genomforIntervall}
-            onChange={(e) => setGenomforIntervall(e.target.value)}
-            style={{ width: 120, padding: "3px 5px", border: "1px solid #d8cfbe", borderRadius: 4, fontSize: 12 }}
-          />
-          <button
-            onClick={() => markeraGenomford(item)}
-            className="rounded-md bg-stone-800 px-2 py-1 text-xs text-white hover:bg-stone-700"
-          >
-            Spara
-          </button>
-          <button
-            onClick={() => {
-              setGenomforId(null);
-              setGenomforIntervall("");
-            }}
-            className="rounded-md border border-stone-300 px-2 py-1 text-xs hover:bg-stone-50"
-          >
-            Avbryt
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setGenomforId(item.id)}
-          className="sans"
-          style={{ fontSize: 11, color: MUTED, border: "1px solid #d8cfbe", borderRadius: 12, padding: "2px 8px", background: "#fff", cursor: "pointer" }}
-        >
-          Markera genomförd
-        </button>
-      )
-    ) : arGenomford ? (
-      <span className="sans" style={{ fontSize: 11, color: "#3d5b3f" }}>
-        Genomförd {item.genomford_datum}
-      </span>
-    ) : null;
-
-    return (
-      <div
-        className="row"
-        style={{
-          borderBottom: "1px solid #f3eee3",
-          background: changed ? "#fdf6ee" : "transparent",
-          padding: "10px 14px",
-        }}
-      >
-        {/* Mobil: stapeltkort */}
-        <div className="sans sm:hidden" style={{ fontSize: 13 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            {arVisning}
-            {fastighetBadge}
-          </div>
-          <div style={{ marginTop: 4 }}>
-            {item.namn}
-            <div style={{ fontSize: 11, color: MUTED }}>
-              {item.kategori_namn} · {item.lage}
-            </div>
-          </div>
-          <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ display: "flex", gap: 14 }}>
-              <span style={{ color: item.investering ? "#2b2620" : MUTED_DASH }}>
-                {item.investering ? "Inv " + krCompact(item.investering) : "—"}
-              </span>
-              <span style={{ color: item.underhall ? "#2b2620" : MUTED_DASH }}>
-                {item.underhall ? "Uh " + krCompact(item.underhall) : "—"}
-              </span>
-            </div>
-            {atgardsKnappar}
-          </div>
-          {genomfordAktion && <div style={{ marginTop: 6 }}>{genomfordAktion}</div>}
-        </div>
-
-        {/* Desktop/tablet: rad-layout */}
-        <div className="sans hidden sm:grid" style={{ gridTemplateColumns: ROW_COLS, gap: 8, alignItems: "center", fontSize: 13 }}>
-          <div>{arVisning}</div>
-          <div>{fastighetBadge}</div>
-          <div>
-            {item.namn}
-            <div style={{ fontSize: 11, color: MUTED }}>
-              {item.kategori_namn} · {item.lage}
-            </div>
-          </div>
-          <div style={{ textAlign: "right", color: item.investering ? "#2b2620" : MUTED_DASH }}>
-            {item.investering ? krCompact(item.investering) : "—"}
-          </div>
-          <div style={{ textAlign: "right", color: item.underhall ? "#2b2620" : MUTED_DASH, paddingRight: 16 }}>
-            {item.underhall ? krCompact(item.underhall) : "—"}
-          </div>
-          <div>{genomfordAktion}</div>
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>{atgardsKnappar}</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -1073,7 +1135,39 @@ export function UnderhallsplanClient({
                             </span>
                             <span>{krCompact(katSumma)}</span>
                           </button>
-                          {katExpanded && katItems.map((item) => <Rad key={item.id} item={item} />)}
+                          {katExpanded &&
+                            katItems.map((item) => (
+                              <Rad
+                                key={item.id}
+                                item={item}
+                                items={items}
+                                kanRedigera={kanRedigera}
+                                editingId={editingId}
+                                editYear={editYear}
+                                setEditYear={setEditYear}
+                                startEdit={startEdit}
+                                commitEdit={commitEdit}
+                                cancelEdit={cancelEdit}
+                                redigerarId={redigerarId}
+                                redigerNamn={redigerNamn}
+                                setRedigerNamn={setRedigerNamn}
+                                redigerKategoriId={redigerKategoriId}
+                                setRedigerKategoriId={setRedigerKategoriId}
+                                redigerInvestering={redigerInvestering}
+                                setRedigerInvestering={setRedigerInvestering}
+                                redigerUnderhall={redigerUnderhall}
+                                setRedigerUnderhall={setRedigerUnderhall}
+                                kategorier={kategorier}
+                                startRedigera={startRedigera}
+                                sparaRedigera={sparaRedigera}
+                                avbrytRedigera={avbrytRedigera}
+                                genomforId={genomforId}
+                                setGenomforId={setGenomforId}
+                                genomforIntervall={genomforIntervall}
+                                setGenomforIntervall={setGenomforIntervall}
+                                markeraGenomford={markeraGenomford}
+                              />
+                            ))}
                         </div>
                       );
                     })}
