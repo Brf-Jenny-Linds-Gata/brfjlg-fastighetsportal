@@ -14,6 +14,8 @@ export type UhPost = {
   underhall: number;
   typ: UhTyp;
   status: UhStatus;
+  genomford_datum: string | null;
+  aterkommande_intervall_ar: number | null;
 };
 
 export type SbaOmfattning = "alla" | "spetshandsken" | "tumvanten";

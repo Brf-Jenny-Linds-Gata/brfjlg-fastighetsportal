@@ -10,7 +10,7 @@ export default async function UnderhallsplanPage() {
   const { data, error } = await supabase
     .from("uh_poster")
     .select(
-      "id, fastighet_id, lage, namn, ar, investering, underhall, typ, status, fastigheter(namn), uh_kategorier(namn)"
+      "id, fastighet_id, lage, namn, ar, investering, underhall, typ, status, genomford_datum, aterkommande_intervall_ar, fastigheter(namn), uh_kategorier(namn)"
     )
     .eq("status", "godkänd")
     .order("ar", { ascending: true });
@@ -39,6 +39,8 @@ export default async function UnderhallsplanPage() {
       underhall: Number(row.underhall),
       typ: row.typ,
       status: row.status,
+      genomford_datum: row.genomford_datum,
+      aterkommande_intervall_ar: row.aterkommande_intervall_ar,
     };
   });
 

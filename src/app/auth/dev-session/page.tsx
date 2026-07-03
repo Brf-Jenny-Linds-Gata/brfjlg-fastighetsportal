@@ -21,7 +21,7 @@ export default function DevSessionPage() {
     const refresh_token = hash.get("refresh_token");
 
     if (!access_token || !refresh_token) {
-      setErrorMsg("Ingen session hittades i länken.");
+      Promise.resolve().then(() => setErrorMsg("Ingen session hittades i länken."));
       return;
     }
 
