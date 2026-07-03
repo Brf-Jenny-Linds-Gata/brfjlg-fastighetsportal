@@ -17,7 +17,6 @@ type Anmarkning = {
   atgardskommentar: string | null;
   port_adress: string | null;
   punkt_text: string | null;
-  kontroll_last: boolean;
   kontroll_kontext: string;
 };
 

@@ -15,7 +15,7 @@ export default async function AnmarkningarPage() {
   const { data, error } = await supabase
     .from("sba_anmarkningar")
     .select(
-      "id, kontroll_id, punkt_id, port_id, beskrivning, foto_url, status, atgardad_av, atgardad_datum, atgardskommentar, skapad_at, portar(adress), sba_kontrollpunkter(text), sba_kontroller(kvartal, ar, status, fastigheter(namn)), profiler(namn)"
+      "id, kontroll_id, punkt_id, port_id, beskrivning, foto_url, status, atgardad_av, atgardad_datum, atgardskommentar, skapad_at, portar(adress), sba_kontrollpunkter(text), sba_kontroller(kvartal, ar, fastigheter(namn)), profiler(namn)"
     )
     .order("status", { ascending: true })
     .order("skapad_at", { ascending: false });
@@ -41,7 +41,6 @@ export default async function AnmarkningarPage() {
       atgardskommentar: row.atgardskommentar,
       port_adress: port?.adress ?? null,
       punkt_text: punkt?.text ?? null,
-      kontroll_last: kontroll?.status === "klar",
       kontroll_kontext: kontroll ? `${fastighet?.namn ?? "Okänd fastighet"} · Q${kontroll.kvartal} ${kontroll.ar}` : "",
     };
   });
