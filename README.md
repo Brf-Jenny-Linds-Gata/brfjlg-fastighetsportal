@@ -38,14 +38,20 @@ senare, och blir läsbart för alla med tillgång till repot. Ange istället
 var lösenordet/nyckeln förvaras (t.ex. namnet på posten i er
 lösenordshanterare, eller vem som administrerar kontot).
 
+Inga privata konton är kopplade till någon av tjänsterna — alla är
+registrerade på föreningens gemensamma adress **info@brfjlg.se**, inte på
+en enskild styrelsemedlems privata mejl. Det gör överlämningen enklare:
+nästa ansvariga behöver bara komma åt den inkorgen (eller ärva
+lösenordshanteraren) för att administrera samtliga tjänster nedan.
+
 | Tjänst | Vad den används till | Inloggning / kontoägare | Var lösenordet finns |
 |---|---|---|---|
-| Supabase (mghmedkjxrbolhtllkba.supabase.co) | Databas, auth, storage — hela appens backend | 🔲 FYLL I (e-post kopplad till Supabase-kontot) | 🔲 FYLL I |
-| Resend (mail.brfjlg.se) | Skickar inloggningsmejl | 🔲 FYLL I | 🔲 FYLL I |
-| GitHub-org Brf-Jenny-Linds-Gata | Kodhem — repo `brfjlg-fastighetsportal` (publikt) | 🔲 FYLL I | 🔲 FYLL I |
-| Loopia AB | Domänregistrator för brfjlg.se (årsavgift, men INTE DNS-innehåll) | 🔲 FYLL I | 🔲 FYLL I |
-| brfnet | Faktisk DNS-hantering för brfjlg.se (namnservrar ns3/ns4.brfnet.se) + cPanel för e-post | 🔲 FYLL I (kontaktväg/supportportal) | 🔲 FYLL I |
-| Vercel (brfjlg-fastighetsportal.vercel.app) | Drift/hosting, auto-deploy från GitHub `main` | 🔲 FYLL I | 🔲 FYLL I |
+| Supabase (mghmedkjxrbolhtllkba.supabase.co) | Databas, auth, storage — hela appens backend | info@brfjlg.se | 🔲 FYLL I |
+| Resend (mail.brfjlg.se) | Skickar inloggningsmejl | info@brfjlg.se | 🔲 FYLL I |
+| GitHub-org Brf-Jenny-Linds-Gata | Kodhem — repo `brfjlg-fastighetsportal` (publikt) | info@brfjlg.se | 🔲 FYLL I |
+| Loopia AB | Domänregistrator för brfjlg.se (årsavgift, men INTE DNS-innehåll) | info@brfjlg.se | 🔲 FYLL I |
+| brfnet | Faktisk DNS-hantering för brfjlg.se (namnservrar ns3/ns4.brfnet.se) + cPanel för e-post | info@brfjlg.se | 🔲 FYLL I |
+| Vercel (brfjlg-fastighetsportal.vercel.app) | Drift/hosting, auto-deploy från GitHub `main` | info@brfjlg.se | 🔲 FYLL I |
 
 **Rekommendation:** använd en delad lösenordshanterare för föreningen
 (t.ex. Bitwarden Organizations, 1Password Families) så att åtkomst kan
