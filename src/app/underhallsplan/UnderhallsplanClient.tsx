@@ -689,7 +689,7 @@ export function UnderhallsplanClient({
           <div style={{ textAlign: "right", color: item.investering ? "#2b2620" : MUTED_DASH }}>
             {item.investering ? krCompact(item.investering) : "—"}
           </div>
-          <div style={{ textAlign: "right", color: item.underhall ? "#2b2620" : MUTED_DASH }}>
+          <div style={{ textAlign: "right", color: item.underhall ? "#2b2620" : MUTED_DASH, paddingRight: 16 }}>
             {item.underhall ? krCompact(item.underhall) : "—"}
           </div>
           <div>{genomfordAktion}</div>
@@ -996,7 +996,7 @@ export function UnderhallsplanClient({
           <div>Fastighet</div>
           <div>Åtgärd</div>
           <div style={{ textAlign: "right" }}>Investering</div>
-          <div style={{ textAlign: "right" }}>Underhåll</div>
+          <div style={{ textAlign: "right", paddingRight: 16 }}>Underhåll</div>
           <div>Status</div>
           <div style={{ textAlign: "right" }}>Hantera</div>
         </div>
