@@ -61,6 +61,37 @@ function kr(n: number) {
   return new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 }).format(n) + " kr";
 }
 
+// Formaterar en sifferstsräng med mellanslag som tusentalsavgränsare
+// (svensk konvention) för visning i redigerbara belopp-fält. State håller
+// alltid bara rena siffror — formateringen sker enbart vid rendering.
+function formatTusental(digits: string) {
+  const clean = digits.replace(/\D/g, "");
+  return clean.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+function BeloppInput({
+  value,
+  onChange,
+  placeholder,
+  style,
+}: {
+  value: string;
+  onChange: (digits: string) => void;
+  placeholder?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={formatTusental(value)}
+      onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
+      placeholder={placeholder}
+      style={style}
+    />
+  );
+}
+
 // CSV med semikolon (svensk Excel-standard) och UTF-8 BOM så att å/ä/ö visas
 // rätt. Undviker ett npm-paket för riktig .xlsx eftersom det enda
 // underhållna alternativet (xlsx/SheetJS) har en okorrigerad
@@ -209,6 +240,8 @@ function Rad({
   redigerarId,
   redigerNamn,
   setRedigerNamn,
+  redigerFastighetId,
+  setRedigerFastighetId,
   redigerKategoriId,
   setRedigerKategoriId,
   redigerInvestering,
@@ -216,6 +249,7 @@ function Rad({
   redigerUnderhall,
   setRedigerUnderhall,
   kategorier,
+  fastigheter,
   startRedigera,
   sparaRedigera,
   avbrytRedigera,
@@ -237,6 +271,8 @@ function Rad({
   redigerarId: string | null;
   redigerNamn: string;
   setRedigerNamn: (v: string) => void;
+  redigerFastighetId: string;
+  setRedigerFastighetId: (v: string) => void;
   redigerKategoriId: string;
   setRedigerKategoriId: (v: string) => void;
   redigerInvestering: string;
@@ -244,6 +280,7 @@ function Rad({
   redigerUnderhall: string;
   setRedigerUnderhall: (v: string) => void;
   kategorier: ListPost[];
+  fastigheter: ListPost[];
   startRedigera: (item: UhPost) => void;
   sparaRedigera: (item: UhPost) => void;
   avbrytRedigera: () => void;
@@ -271,6 +308,18 @@ function Rad({
             style={{ flex: "1 1 200px", padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
           />
           <select
+            value={redigerFastighetId}
+            onChange={(e) => setRedigerFastighetId(e.target.value)}
+            style={{ padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
+          >
+            <option value="">Gemensam</option>
+            {fastigheter.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.namn}
+              </option>
+            ))}
+          </select>
+          <select
             value={redigerKategoriId}
             onChange={(e) => setRedigerKategoriId(e.target.value)}
             style={{ padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
@@ -282,17 +331,15 @@ function Rad({
               </option>
             ))}
           </select>
-          <input
-            type="number"
+          <BeloppInput
             value={redigerInvestering}
-            onChange={(e) => setRedigerInvestering(e.target.value)}
+            onChange={setRedigerInvestering}
             placeholder="Investering"
             style={{ width: 110, padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
           />
-          <input
-            type="number"
+          <BeloppInput
             value={redigerUnderhall}
-            onChange={(e) => setRedigerUnderhall(e.target.value)}
+            onChange={setRedigerUnderhall}
             placeholder="Underhåll"
             style={{ width: 110, padding: "5px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}
           />
@@ -523,6 +570,7 @@ export function UnderhallsplanClient({
   const [genomforIntervall, setGenomforIntervall] = useState("");
   const [redigerarId, setRedigerarId] = useState<string | null>(null);
   const [redigerNamn, setRedigerNamn] = useState("");
+  const [redigerFastighetId, setRedigerFastighetId] = useState("");
   const [redigerKategoriId, setRedigerKategoriId] = useState("");
   const [redigerInvestering, setRedigerInvestering] = useState("");
   const [redigerUnderhall, setRedigerUnderhall] = useState("");
@@ -705,6 +753,7 @@ export function UnderhallsplanClient({
   function startRedigera(item: UhPost) {
     setRedigerarId(item.id);
     setRedigerNamn(item.namn);
+    setRedigerFastighetId(item.fastighet_id ?? "");
     setRedigerKategoriId(item.kategori_id ?? "");
     setRedigerInvestering(String(item.investering));
     setRedigerUnderhall(String(item.underhall));
@@ -717,12 +766,14 @@ export function UnderhallsplanClient({
     const investering = Number(redigerInvestering) || 0;
     const underhall = Number(redigerUnderhall) || 0;
     const kategori = kategorier.find((k) => k.id === redigerKategoriId);
+    const fastighet = fastigheter.find((f) => f.id === redigerFastighetId);
 
     const supabase = createClient();
     const { error } = await supabase
       .from("uh_poster")
       .update({
         namn: redigerNamn.trim() || item.namn,
+        fastighet_id: redigerFastighetId || null,
         kategori_id: redigerKategoriId || null,
         investering,
         underhall,
@@ -741,6 +792,8 @@ export function UnderhallsplanClient({
           ? {
               ...i,
               namn: redigerNamn.trim() || item.namn,
+              fastighet_id: redigerFastighetId || null,
+              fastighet_namn: fastighet?.namn ?? "Gemensam",
               kategori_id: redigerKategoriId || null,
               kategori_namn: kategori?.namn ?? null,
               investering,
@@ -1151,6 +1204,8 @@ export function UnderhallsplanClient({
                                 redigerarId={redigerarId}
                                 redigerNamn={redigerNamn}
                                 setRedigerNamn={setRedigerNamn}
+                                redigerFastighetId={redigerFastighetId}
+                                setRedigerFastighetId={setRedigerFastighetId}
                                 redigerKategoriId={redigerKategoriId}
                                 setRedigerKategoriId={setRedigerKategoriId}
                                 redigerInvestering={redigerInvestering}
@@ -1158,6 +1213,7 @@ export function UnderhallsplanClient({
                                 redigerUnderhall={redigerUnderhall}
                                 setRedigerUnderhall={setRedigerUnderhall}
                                 kategorier={kategorier}
+                                fastigheter={fastigheter}
                                 startRedigera={startRedigera}
                                 sparaRedigera={sparaRedigera}
                                 avbrytRedigera={avbrytRedigera}
@@ -1378,11 +1434,11 @@ function NyPostForm({
         </label>
         <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <span style={{ fontSize: 11, color: MUTED }}>Investering, kr (lånefinansierad engångskostnad)</span>
-          <input type="number" value={investering} onChange={(e) => setInvestering(e.target.value)} style={{ width: 160, padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+          <BeloppInput value={investering} onChange={setInvestering} style={{ width: 160, padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
         </label>
         <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <span style={{ fontSize: 11, color: MUTED }}>Underhåll, kr (fondfinansierad direktkostnad)</span>
-          <input type="number" value={underhall} onChange={(e) => setUnderhall(e.target.value)} style={{ width: 160, padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+          <BeloppInput value={underhall} onChange={setUnderhall} style={{ width: 160, padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
         </label>
       </div>
       <p style={{ fontSize: 11, color: MUTED, margin: 0 }}>
