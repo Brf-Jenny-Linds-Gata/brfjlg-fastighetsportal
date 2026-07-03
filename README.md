@@ -38,7 +38,7 @@ lösenordshanterare, eller vem som administrerar kontot).
 |---|---|---|---|
 | Supabase (mghmedkjxrbolhtllkba.supabase.co) | Databas, auth, storage — hela appens backend | 🔲 FYLL I (e-post kopplad till Supabase-kontot) | 🔲 FYLL I |
 | Resend (mail.brfjlg.se) | Skickar inloggningsmejl | 🔲 FYLL I | 🔲 FYLL I |
-| GitHub-org Brf-Jenny-Linds-Gata | Tänkt kodhem (ej pushat än, se nedan) | 🔲 FYLL I | 🔲 FYLL I |
+| GitHub-org Brf-Jenny-Linds-Gata | Kodhem — repo `brfjlg-fastighetsportal` (privat) | 🔲 FYLL I | 🔲 FYLL I |
 | Loopia AB | Domänregistrator för brfjlg.se (årsavgift, men INTE DNS-innehåll) | 🔲 FYLL I | 🔲 FYLL I |
 | brfnet | Faktisk DNS-hantering för brfjlg.se (namnservrar ns3/ns4.brfnet.se) + cPanel för e-post | 🔲 FYLL I (kontaktväg/supportportal) | 🔲 FYLL I |
 | Vercel | Planerad driftplattform, inte uppsatt än | 🔲 FYLL I när det skapas | 🔲 FYLL I |
@@ -97,8 +97,8 @@ Webbläsare
    │     det cPanel-konto föreningen har (som bara har e-postverktyg, ingen
    │     DNS-zonredigerare).
    │
-   └─ GitHub-org Brf-Jenny-Linds-Gata – tänkt hem för koden. Lokalt
-         git-repo finns i webapp/ men är ännu INTE pushat till någon remote.
+   └─ GitHub-org Brf-Jenny-Linds-Gata – repot heter brfjlg-fastighetsportal
+         (privat, gren main). git-repot i webapp/ har origin satt dit.
 ```
 
 **Vercel** är inte uppsatt än (inget projekt skapat), så appen finns bara
@@ -309,7 +309,7 @@ som miljövariabel i Vercel (server-only, inte prefixad med
 ## Kända begränsningar / kvar att göra
 
 - **Vercel-deploy**: inte uppsatt än, appen körs bara lokalt
-- **GitHub-remote**: repot är inte pushat till `Brf-Jenny-Linds-Gata`-orgen än
+- **GitHub-remote**: klart, se `https://github.com/Brf-Jenny-Linds-Gata/brfjlg-fastighetsportal` (privat repo, gren `main`)
 - **Mörkt läge**: medvetet inte implementerat. `color-scheme: light` är
   satt explicit i `globals.css` för att undvika att webbläsarens
   inbyggda mörka rendering ger osynlig text på ljusa bakgrunder
