@@ -3,8 +3,15 @@
 Webbapp för Brf Jenny Linds Gata (Stockholm) som ersätter Excel/Planima för
 underhållsplanering och SBA (systematiskt brandskyddsarbete).
 
+> **Det här är ett levande dokument.** Det uppdateras löpande i takt med
+> att appen byggs vidare, så att någon annan än den nuvarande
+> styrelsemedlemmen kan ta över utan att behöva återupptäcka hur allt
+> hänger ihop. Fält märkta 🔲 **FYLL I** nedan är sådant bara du (den
+> nuvarande ägaren av kontona) kan fylla i.
+
 ## Innehåll
 
+- [Överlämning – konton och åtkomst](#överlämning--konton-och-åtkomst)
 - [Teknisk stack](#teknisk-stack)
 - [Arkitektur & anslutna tjänster](#arkitektur--anslutna-tjänster)
 - [Datamodell](#datamodell)
@@ -13,6 +20,32 @@ underhållsplanering och SBA (systematiskt brandskyddsarbete).
 - [Kom igång lokalt](#kom-igång-lokalt)
 - [Databasmigrationer](#databasmigrationer)
 - [Kända begränsningar / kvar att göra](#kända-begränsningar--kvar-att-göra)
+
+## Överlämning – konton och åtkomst
+
+Om du lämnar styrelsen: se till att nästa ansvariga person får åtkomst
+till kontona nedan **innan** du lämnar. Fyll i användarnamn/e-post här i
+dokumentet (det är inte hemligt) — men skriv **aldrig lösenord eller
+API-nycklar i klartext i den här filen**. Filen ligger i git och allt som
+committas dit finns kvar för alltid i historiken, även om du tar bort det
+senare, och blir läsbart för alla med tillgång till repot. Ange istället
+var lösenordet/nyckeln förvaras (t.ex. namnet på posten i er
+lösenordshanterare, eller vem som administrerar kontot).
+
+| Tjänst | Vad den används till | Inloggning / kontoägare | Var lösenordet finns |
+|---|---|---|---|
+| Supabase (mghmedkjxrbolhtllkba.supabase.co) | Databas, auth, storage — hela appens backend | 🔲 FYLL I (e-post kopplad till Supabase-kontot) | 🔲 FYLL I |
+| Resend (mail.brfjlg.se) | Skickar inloggningsmejl | 🔲 FYLL I | 🔲 FYLL I |
+| GitHub-org Brf-Jenny-Linds-Gata | Tänkt kodhem (ej pushat än, se nedan) | 🔲 FYLL I | 🔲 FYLL I |
+| Loopia AB | Domänregistrator för brfjlg.se (årsavgift, men INTE DNS-innehåll) | 🔲 FYLL I | 🔲 FYLL I |
+| brfnet | Faktisk DNS-hantering för brfjlg.se (namnservrar ns3/ns4.brfnet.se) + cPanel för e-post | 🔲 FYLL I (kontaktväg/supportportal) | 🔲 FYLL I |
+| Vercel | Planerad driftplattform, inte uppsatt än | 🔲 FYLL I när det skapas | 🔲 FYLL I |
+
+**Rekommendation:** använd en delad lösenordshanterare för föreningen
+(t.ex. Bitwarden Organizations, 1Password Families) så att åtkomst kan
+överlämnas utan att lösenord behöver skickas i klartext via mejl/chatt.
+
+
 
 ## Teknisk stack
 
