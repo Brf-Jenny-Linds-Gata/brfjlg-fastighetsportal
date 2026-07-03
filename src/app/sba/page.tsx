@@ -55,7 +55,7 @@ export default async function SbaPage() {
         </div>
 
         <div className="mt-6 overflow-hidden rounded-lg border border-stone-200 bg-white">
-          <div className="hidden grid-cols-[100px_1fr_100px_140px_100px] gap-2 border-b border-stone-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-stone-500 sm:grid">
+          <div className="hidden grid-cols-[100px_1fr_100px_140px_100px] gap-2 border-b border-stone-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-stone-600 sm:grid">
             <div>Kvartal</div>
             <div>Fastighet</div>
             <div>År</div>
@@ -73,7 +73,7 @@ export default async function SbaPage() {
                   <div className="font-medium text-stone-800">
                     {k.fastighet_namn} · Q{k.kvartal} {k.ar}
                   </div>
-                  <div className="text-xs text-stone-500">Utförd: {k.utford_datum ?? "—"}</div>
+                  <div className="text-xs text-stone-600">Utförd: {k.utford_datum ?? "—"}</div>
                 </div>
                 <span
                   className={

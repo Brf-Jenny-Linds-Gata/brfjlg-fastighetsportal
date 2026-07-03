@@ -39,7 +39,7 @@ export function NyKontrollForm({ fastigheter }: { fastigheter: { id: string; nam
   return (
     <div className="min-h-screen bg-stone-50 px-6 py-10">
       <div className="mx-auto max-w-md">
-        <Link href="/sba" className="text-sm text-stone-500 underline hover:text-stone-700">
+        <Link href="/sba" className="text-sm text-stone-600 underline hover:text-stone-700">
           ← Tillbaka
         </Link>
         <h1 className="mt-1 text-xl font-semibold text-stone-800">Ny SBA-kontroll</h1>

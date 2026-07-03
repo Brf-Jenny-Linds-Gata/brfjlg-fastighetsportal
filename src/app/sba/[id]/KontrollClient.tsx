@@ -30,7 +30,7 @@ function Foto({ path }: { path: string }) {
     };
   }, [path]);
 
-  if (!url) return <span className="text-xs text-stone-500">Laddar bild…</span>;
+  if (!url) return <span className="text-xs text-stone-600">Laddar bild…</span>;
   return (
     <a href={url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -65,7 +65,7 @@ function AnmarkningKort({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-stone-800">{a.beskrivning}</p>
-          {a.port_adress && <p className="mt-0.5 text-xs text-stone-500">{a.port_adress}</p>}
+          {a.port_adress && <p className="mt-0.5 text-xs text-stone-600">{a.port_adress}</p>}
           {a.foto_url && <Foto path={a.foto_url} />}
           {a.status === "åtgärdad" && a.atgardskommentar && (
             <p className="mt-1 text-xs text-green-700">Åtgärd: {a.atgardskommentar}</p>
@@ -376,10 +376,10 @@ export function KontrollClient({
             const punktAnmarkningar = anmarkningarFor(p.id);
             return (
               <div key={p.id} className="rounded-lg border border-stone-200 bg-white p-3 text-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-stone-800">{p.text}</span>
+                <div className="text-stone-800">{p.text}</div>
+                <div className="mt-2">
                   {kanRedigeraKontroll ? (
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex gap-2">
                       <button
                         disabled={savingPunkt === p.id}
                         onClick={() => setGodkand(p.id, true)}
@@ -406,7 +406,7 @@ export function KontrollClient({
                       </button>
                     </div>
                   ) : (
-                    <span className="shrink-0 text-xs text-stone-600">
+                    <span className="text-xs text-stone-600">
                       {varde === true ? "Godkänd" : varde === false ? "Ej godkänd" : "Ej bedömd"}
                     </span>
                   )}
@@ -451,7 +451,7 @@ export function KontrollClient({
         <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-stone-600">
           Övriga anmärkningar
         </h2>
-        <p className="mt-1 text-xs text-stone-500">Anmärkningar som inte hör till en specifik checklistpunkt.</p>
+        <p className="mt-1 text-xs text-stone-600">Anmärkningar som inte hör till en specifik checklistpunkt.</p>
         <div className="mt-2 space-y-2">
           {allmannaAnmarkningar.length === 0 && (
             <div className="rounded-lg border border-stone-200 bg-white px-4 py-6 text-sm text-stone-600">
@@ -484,6 +484,18 @@ export function KontrollClient({
                 Lägg till övrig anmärkning
               </button>
             )}
+          </div>
+        )}
+
+        {kanRedigeraKontroll && status !== "klar" && (
+          <div className="mt-8 flex items-center justify-between rounded-lg border border-stone-200 bg-white p-4">
+            <span className="text-sm text-stone-700">Klar med kontrollen?</span>
+            <button
+              onClick={markeraKlar}
+              className="rounded-md bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700"
+            >
+              Markera kontrollen klar
+            </button>
           </div>
         )}
       </div>

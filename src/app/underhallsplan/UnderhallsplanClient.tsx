@@ -59,6 +59,40 @@ function kr(n: number) {
   return new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 }).format(n) + " kr";
 }
 
+function GrafTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { name?: string; value?: number; color?: string }[];
+  label?: number;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  const total = payload.reduce((s, p) => s + (p.value ?? 0), 0);
+  return (
+    <div
+      className="sans"
+      style={{ background: "#fff", border: "1px solid #e4ddd0", borderRadius: 6, padding: "8px 10px", fontSize: 12 }}
+    >
+      <div style={{ fontWeight: 600, marginBottom: 4 }}>År {label}</div>
+      {payload
+        .filter((p) => (p.value ?? 0) > 0)
+        .map((p) => (
+          <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 6, color: "#3d382f" }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
+            <span style={{ flex: 1 }}>{p.name}</span>
+            <span>{kr(p.value ?? 0)}</span>
+          </div>
+        ))}
+      <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid #eee5d5", display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+        <span>Totalt</span>
+        <span>{kr(total)}</span>
+      </div>
+    </div>
+  );
+}
+
 function yearlyTotals(items: UhPost[], fastighetFilter: string, fromYear: number, toYear: number) {
   const filtered =
     fastighetFilter === "Alla" ? items : items.filter((i) => i.fastighet_namn === fastighetFilter);
@@ -727,11 +761,7 @@ export function UnderhallsplanClient({
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee5d5" />
                 <XAxis dataKey="ar" tick={{ fontSize: 11, fontFamily: "sans-serif" }} interval={1} />
                 <YAxis tickFormatter={krCompact} tick={{ fontSize: 11, fontFamily: "sans-serif" }} width={55} />
-                <Tooltip
-                  formatter={(v) => (v === undefined ? "" : kr(Number(v)))}
-                  labelFormatter={(l) => `År ${l}`}
-                  contentStyle={{ fontFamily: "sans-serif", fontSize: 12 }}
-                />
+                <Tooltip content={<GrafTooltip />} />
                 <Legend wrapperStyle={{ fontFamily: "sans-serif", fontSize: 12 }} />
                 {alleKategoriNamn.map((k) => (
                   <Bar key={k} dataKey={k} stackId="a" fill={kategoriColor(k)} />

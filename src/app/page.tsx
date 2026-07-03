@@ -12,7 +12,7 @@ export default async function Home() {
           <form action="/auth/logout" method="post">
             <button
               type="submit"
-              className="text-sm text-stone-500 underline hover:text-stone-700"
+              className="text-sm text-stone-600 underline hover:text-stone-700"
             >
               Logga ut
             </button>

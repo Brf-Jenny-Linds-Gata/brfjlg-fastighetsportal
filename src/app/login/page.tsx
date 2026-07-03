@@ -33,7 +33,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-stone-50 px-4">
       <div className="w-full max-w-sm rounded-xl border border-stone-200 bg-white p-8 shadow-sm">
         <h1 className="text-xl font-semibold text-stone-800">BrfJLG Fastighetsportal</h1>
-        <p className="mt-1 text-sm text-stone-500">Logga in med din e-postadress.</p>
+        <p className="mt-1 text-sm text-stone-600">Logga in med din e-postadress.</p>
 
         {status === "sent" ? (
           <p className="mt-6 text-sm text-stone-700">
