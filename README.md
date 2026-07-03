@@ -38,10 +38,10 @@ lösenordshanterare, eller vem som administrerar kontot).
 |---|---|---|---|
 | Supabase (mghmedkjxrbolhtllkba.supabase.co) | Databas, auth, storage — hela appens backend | 🔲 FYLL I (e-post kopplad till Supabase-kontot) | 🔲 FYLL I |
 | Resend (mail.brfjlg.se) | Skickar inloggningsmejl | 🔲 FYLL I | 🔲 FYLL I |
-| GitHub-org Brf-Jenny-Linds-Gata | Kodhem — repo `brfjlg-fastighetsportal` (privat) | 🔲 FYLL I | 🔲 FYLL I |
+| GitHub-org Brf-Jenny-Linds-Gata | Kodhem — repo `brfjlg-fastighetsportal` (publikt) | 🔲 FYLL I | 🔲 FYLL I |
 | Loopia AB | Domänregistrator för brfjlg.se (årsavgift, men INTE DNS-innehåll) | 🔲 FYLL I | 🔲 FYLL I |
 | brfnet | Faktisk DNS-hantering för brfjlg.se (namnservrar ns3/ns4.brfnet.se) + cPanel för e-post | 🔲 FYLL I (kontaktväg/supportportal) | 🔲 FYLL I |
-| Vercel | Planerad driftplattform, inte uppsatt än | 🔲 FYLL I när det skapas | 🔲 FYLL I |
+| Vercel (brfjlg-fastighetsportal.vercel.app) | Drift/hosting, auto-deploy från GitHub `main` | 🔲 FYLL I | 🔲 FYLL I |
 
 **Rekommendation:** använd en delad lösenordshanterare för föreningen
 (t.ex. Bitwarden Organizations, 1Password Families) så att åtkomst kan
@@ -98,11 +98,20 @@ Webbläsare
    │     DNS-zonredigerare).
    │
    └─ GitHub-org Brf-Jenny-Linds-Gata – repot heter brfjlg-fastighetsportal
-         (privat, gren main). git-repot i webapp/ har origin satt dit.
+         (publikt, gren main). git-repot i webapp/ har origin satt dit.
 ```
 
-**Vercel** är inte uppsatt än (inget projekt skapat), så appen finns bara
-lokalt tills vidare.
+**Vercel** – projektet är kopplat till GitHub-repot och deployar
+automatiskt vid push till `main`. Live på
+**https://brfjlg-fastighetsportal.vercel.app**.
+
+**Om repots synlighet:** repot är medvetet publikt (inte privat) för att
+kunna använda Vercels gratis Hobby-plan — privata repon i en
+organisation kräver Vercel Pro. Det innehåller inga hemligheter
+(`.env.local` är gitignorat och har aldrig committats), så det största
+"priset" är att kod/datamodell/affärslogik är synlig för vem som helst.
+Om det blir ett problem senare: gör repot privat igen och uppgradera
+Vercel-teamet till Pro.
 
 ### Nycklar och var de bor
 
@@ -110,7 +119,7 @@ lokalt tills vidare.
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | `webapp/.env.local` | Klient + server (publik, ok att exponera) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `webapp/.env.local` | Klient + server, RLS avgör åtkomst (publik, ok att exponera) |
-| `SUPABASE_SERVICE_ROLE_KEY` | `webapp/.env.local` (och i Vercel som server-only env-variabel vid deploy) | `scripts/`-verktygen samt `src/lib/supabase/admin.ts` (används av `/api/admin/*` Route Handlers). Kringgår RLS helt – används ALDRIG i klientkod, och varje route som använder den måste själv verifiera anroparens roll. |
+| `SUPABASE_SERVICE_ROLE_KEY` | `webapp/.env.local` och som server-only env-variabel i Vercel-projektet | `scripts/`-verktygen samt `src/lib/supabase/admin.ts` (används av `/api/admin/*` Route Handlers). Kringgår RLS helt – används ALDRIG i klientkod, och varje route som använder den måste själv verifiera anroparens roll. |
 
 `.env.local` är gitignorat (`.env*` i `.gitignore`) och committas aldrig.
 
@@ -187,6 +196,15 @@ Passwordless magic-link via Supabase Auth (`@supabase/ssr`):
 - `src/app/login/page.tsx` – skickar magic link
 - `src/app/auth/callback/route.ts` – tar emot PKCE-koden från den riktiga
   e-postlänken och upprättar sessionen
+
+**Viktigt vid ny domän:** Supabase Auth har en allow-list för vilka
+redirect-URL:er magic link-mejl får peka på. Om appen får en ny domän
+(t.ex. en custom domain istället för `*.vercel.app`) måste den läggas
+till i **Supabase Dashboard → Authentication → URL Configuration**, både
+som Site URL och som `<domän>/auth/callback` under Redirect URLs — annars
+fungerar inloggningslänken inte på den nya domänen. Nuvarande tillåtna
+URL:er: `http://localhost:3000/auth/callback` och
+`https://brfjlg-fastighetsportal.vercel.app/auth/callback`.
 
 ### Testa inloggning lokalt utan att vänta på e-post
 
@@ -308,8 +326,8 @@ som miljövariabel i Vercel (server-only, inte prefixad med
 
 ## Kända begränsningar / kvar att göra
 
-- **Vercel-deploy**: inte uppsatt än, appen körs bara lokalt
-- **GitHub-remote**: klart, se `https://github.com/Brf-Jenny-Linds-Gata/brfjlg-fastighetsportal` (privat repo, gren `main`)
+- **Vercel-deploy**: klart, live på https://brfjlg-fastighetsportal.vercel.app (auto-deploy vid push till `main`)
+- **GitHub-remote**: klart, se `https://github.com/Brf-Jenny-Linds-Gata/brfjlg-fastighetsportal` (publikt repo, gren `main` — se avsnittet om Vercel ovan för varför publikt)
 - **Mörkt läge**: medvetet inte implementerat. `color-scheme: light` är
   satt explicit i `globals.css` för att undvika att webbläsarens
   inbyggda mörka rendering ger osynlig text på ljusa bakgrunder
