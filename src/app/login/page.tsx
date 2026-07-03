@@ -30,8 +30,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-50 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-stone-200 bg-white p-8 shadow-sm">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-stone-50 px-4">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[url('/images/tulpaner.webp')] bg-cover bg-top opacity-55"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(250,250,249,0.85)_0%,rgba(250,250,249,0.8)_35%,rgba(250,250,249,0.4)_65%,rgba(250,250,249,0.05)_100%)]"
+        aria-hidden="true"
+      />
+      <div className="relative w-full max-w-sm rounded-xl border border-stone-200 bg-white p-8 shadow-sm">
         <h1 className="text-xl font-semibold text-stone-800">BrfJLG Fastighetsportal</h1>
         <p className="mt-1 text-sm text-stone-600">Logga in med din e-postadress.</p>
 
