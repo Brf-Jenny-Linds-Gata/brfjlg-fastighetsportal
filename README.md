@@ -15,6 +15,7 @@ underhållsplanering och SBA (systematiskt brandskyddsarbete).
 - [Teknisk stack](#teknisk-stack)
 - [Arkitektur & anslutna tjänster](#arkitektur--anslutna-tjänster)
 - [Datamodell](#datamodell)
+- [Behörigheter](#behörigheter)
 - [Autentisering](#autentisering)
 - [Mappstruktur](#mappstruktur)
 - [Kom igång lokalt](#kom-igång-lokalt)
@@ -134,6 +135,37 @@ All åtkomst styrs av Row Level Security-policyer (definierade i
 migrationsfilerna) – inte av applikationskoden. Det betyder att samma
 regler gäller oavsett vilket verktyg som pratar med databasen.
 
+## Behörigheter
+
+Fyra fasta roller (Postgres-enum `profil_roll`): `styrelse`,
+`brandskyddsansvarig`, `medlem`, `entreprenör`. Behörighet styrs på två
+nivåer samtidigt, av olika skäl:
+
+1. **RLS-policyer i databasen** (`db/*.sql`) — den faktiska
+   säkerhetsgränsen. Gäller oavsett vilket verktyg som pratar med
+   databasen, går inte att kringgå från applikationskoden.
+2. **`src/lib/permissions.ts`** — en enda liten fil som avgör vilken roll
+   som *ser* vilken flik/sida (`underhallsplan`, `sba`, `anmarkningar`,
+   `admin`). Ren bekvämlighet/UX, inte säkerhet — ändra bara den här
+   filen om en roll ska flytta till en annan sida, ingen anledning att
+   leta upp behörighetskoll i varje enskild sidfil.
+
+| Roll | Ser | Får skriva (styrs av RLS) |
+|---|---|---|
+| `styrelse` | Allt | Allt |
+| `brandskyddsansvarig` | SBA | SBA-kontroller, checklistor, anmärkningar |
+| `medlem` | Underhållsplan (läsläge) | Inget |
+| `entreprenör` | `/anmarkningar` (samlad vy över öppna/åtgärdade anmärkningar från alla kontroller) | Markera anmärkningar åtgärdade |
+
+Ett medvetet designval: vi undersökte ett dynamiskt, admin-konfigurerbart
+grupp-/behörighetssystem men valde bort det. RLS-policyerna refererar
+redan direkt till rollnamn i databasen — ett riktigt dynamiskt system
+hade krävt en helt ny datamodell (behörigheter som rader i en tabell,
+alla RLS-policyer omskrivna för att joina mot den). För ett internt
+verktyg med fyra roller är det överdimensionerat; en central
+konfigurationsfil ger samma underhållbarhet utan ombyggnaden. Om
+föreningen växer ur de fyra rollerna är det värt att ta upp igen.
+
 ## Autentisering
 
 Passwordless magic-link via Supabase Auth (`@supabase/ssr`):
@@ -170,9 +202,11 @@ webapp/
 │   ├── auth/dev-session/       – dev-only, se ovan
 │   ├── underhallsplan/         – underhållsplan (server + klientkomponent)
 │   ├── sba/                    – SBA: lista, ny kontroll, kontrolldetalj
+│   ├── anmarkningar/           – samlad anmärkningsvy (bl.a. för entreprenör)
 │   ├── admin/                  – användarhantering, endast roll styrelse
 │   ├── api/admin/users/        – Route Handlers admin-vyn anropar (service_role)
 │   └── page.tsx                – startsida
+├── src/lib/permissions.ts      – central karta roll → vilka sidor syns (UX, ej säkerhet)
 ├── src/lib/supabase/           – Supabase-klienter, typer, profil-helper
 │   └── admin.ts                – service_role-klient + requireStyrelse()-vakt,
 │                                  importeras ALDRIG i klientkod
