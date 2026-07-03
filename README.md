@@ -108,7 +108,7 @@ lokalt tills vidare.
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | `webapp/.env.local` | Klient + server (publik, ok att exponera) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `webapp/.env.local` | Klient + server, RLS avgör åtkomst (publik, ok att exponera) |
-| `SUPABASE_SERVICE_ROLE_KEY` | `webapp/.env.local` (endast lokalt) | **Bara** `scripts/`-verktyg, aldrig i appkoden. Kringgår RLS helt – får aldrig committas eller användas i klientkod. |
+| `SUPABASE_SERVICE_ROLE_KEY` | `webapp/.env.local` (och i Vercel som server-only env-variabel vid deploy) | `scripts/`-verktygen samt `src/lib/supabase/admin.ts` (används av `/api/admin/*` Route Handlers). Kringgår RLS helt – används ALDRIG i klientkod, och varje route som använder den måste själv verifiera anroparens roll. |
 
 `.env.local` är gitignorat (`.env*` i `.gitignore`) och committas aldrig.
 
@@ -170,8 +170,12 @@ webapp/
 │   ├── auth/dev-session/       – dev-only, se ovan
 │   ├── underhallsplan/         – underhållsplan (server + klientkomponent)
 │   ├── sba/                    – SBA: lista, ny kontroll, kontrolldetalj
+│   ├── admin/                  – användarhantering, endast roll styrelse
+│   ├── api/admin/users/        – Route Handlers admin-vyn anropar (service_role)
 │   └── page.tsx                – startsida
 ├── src/lib/supabase/           – Supabase-klienter, typer, profil-helper
+│   └── admin.ts                – service_role-klient + requireStyrelse()-vakt,
+│                                  importeras ALDRIG i klientkod
 ├── src/proxy.ts                – auth-skydd för alla routes
 ├── db/                         – SQL-migrationer, körs manuellt i Supabase
 │   └── 001_init_schema.sql     – ursprungsschemat (kör detta först i ett
@@ -216,15 +220,30 @@ migrationsrunner kopplad till detta projekt.
 | `005_sba_foton_storage_policies.sql` | Läs-/skrivpolicyer för Storage-bucketen `sba-foton` |
 | `006_uh_poster_genomford.sql` | Nya kolumner för "markera genomförd" + återkommande intervall |
 | `007_uh_andringslogg_insert_policy.sql` | **Kritisk fix** – ändringsloggens trigger saknade INSERT-policy, blockerade alla år-/kostnadsändringar på UH-poster |
+| `008_grant_service_role_privileges.sql` | **Kritisk fix** – samma sak som 004 men för `service_role` (användarhanteringens admin-API:er) |
+
+## Användarhantering (admin-vy)
+
+`/admin` (endast roll `styrelse`) listar alla användare med senaste
+inloggning, låter dig bjuda in nya (skickar inbjudningsmejl via
+Supabase Auth → Resend), ändra roll och ta bort användare.
+
+Detta krävde `SUPABASE_SERVICE_ROLE_KEY` i en riktig del av appen (inte
+bara i `scripts/`, som tidigare) eftersom `auth.admin.inviteUserByEmail`
+och att läsa `last_sign_in_at` inte går via den vanliga
+anon-key-/RLS-vägen. Varje Route Handler under `src/app/api/admin/`
+verifierar själv att anroparen har rollen `styrelse` innan den gör något
+— `service_role` kringgår RLS helt, så det skyddet måste ske i
+applikationskoden, inte i databasen.
+
+**Innan produktionsdeploy:** `SUPABASE_SERVICE_ROLE_KEY` måste läggas till
+som miljövariabel i Vercel (server-only, inte prefixad med
+`NEXT_PUBLIC_`) när projektet sätts upp där.
 
 ## Kända begränsningar / kvar att göra
 
 - **Vercel-deploy**: inte uppsatt än, appen körs bara lokalt
 - **GitHub-remote**: repot är inte pushat till `Brf-Jenny-Linds-Gata`-orgen än
-- **Admin-vy för användarhantering**: planerad men inte påbörjad. Kräver
-  `service_role`-nyckeln i en server-side Route Handler (för
-  `auth.admin.inviteUserByEmail` m.m.) – ska inte byggas utan uttryckligt
-  godkännande, se projektminnet
 - **Mörkt läge**: medvetet inte implementerat. `color-scheme: light` är
   satt explicit i `globals.css` för att undvika att webbläsarens
   inbyggda mörka rendering ger osynlig text på ljusa bakgrunder
