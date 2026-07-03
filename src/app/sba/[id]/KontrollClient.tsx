@@ -338,24 +338,14 @@ export function KontrollClient({
           <h1 className="text-lg font-semibold text-stone-800 sm:text-xl">
             {kontroll.fastighet_namn} · Q{kontroll.kvartal} {kontroll.ar}
           </h1>
-          <div className="flex items-center gap-3">
-            <span
-              className={
-                "rounded-full px-2 py-0.5 text-xs " +
-                (status === "klar" ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800")
-              }
-            >
-              {status}
-            </span>
-            {kanRedigeraKontroll && status !== "klar" && (
-              <button
-                onClick={markeraKlar}
-                className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm hover:bg-stone-50"
-              >
-                Markera klar
-              </button>
-            )}
-          </div>
+          <span
+            className={
+              "rounded-full px-2 py-0.5 text-xs " +
+              (status === "klar" ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800")
+            }
+          >
+            {status}
+          </span>
         </div>
 
         {errorMsg && (
