@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ImageIcon, Paperclip } from "lucide-react";
+import { ImageIcon, Paperclip, Printer } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type {
   SbaAnmarkning,
@@ -346,23 +346,43 @@ export function KontrollClient({
   const allmannaAnmarkningar = anmarkningarFor(null);
 
   return (
-    <div className="min-h-screen bg-stone-50 px-4 py-6 sm:px-6 sm:py-10">
+    <div className="min-h-screen bg-stone-50 px-4 py-6 sm:px-6 sm:py-10 print:bg-white print:px-0 print:py-0">
+      <style>{`
+        @media print {
+          .print-visa { display: block !important; }
+        }
+      `}</style>
       <div className="mx-auto max-w-3xl">
-        <Link href="/sba" className="text-sm text-stone-600 underline hover:text-stone-800">
+        <div className="print-visa hidden">
+          <p className="text-xs uppercase tracking-wide text-stone-500">Brf Jenny Linds Gata</p>
+          <h1 className="text-lg font-semibold text-stone-900">Protokoll — systematiskt brandskyddsarbete</h1>
+        </div>
+
+        <Link href="/sba" className="text-sm text-stone-600 underline hover:text-stone-800 print:hidden">
           ← Alla kontroller
         </Link>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-lg font-semibold text-stone-800 sm:text-xl">
             {kontroll.fastighet_namn} · Q{kontroll.kvartal} {kontroll.ar}
           </h1>
-          <span
-            className={
-              "rounded-full px-2 py-0.5 text-xs " +
-              (status === "klar" ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800")
-            }
-          >
-            {status}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={
+                "rounded-full px-2 py-0.5 text-xs " +
+                (status === "klar" ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800")
+              }
+            >
+              {status}
+            </span>
+            {status === "klar" && (
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-1 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs hover:bg-stone-50 print:hidden"
+              >
+                <Printer size={13} /> Skriv ut / Spara som PDF
+              </button>
+            )}
+          </div>
         </div>
 
         {status === "klar" && (

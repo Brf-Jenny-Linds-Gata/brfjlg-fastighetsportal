@@ -22,6 +22,7 @@ import {
   SquarePen,
   CalendarClock,
   Plus,
+  FileDown,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { UhPost } from "@/lib/supabase/types";
@@ -57,6 +58,49 @@ function krCompact(n: number) {
 }
 function kr(n: number) {
   return new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 }).format(n) + " kr";
+}
+
+// CSV med semikolon (svensk Excel-standard) och UTF-8 BOM så att å/ä/ö visas
+// rätt. Undviker ett npm-paket för riktig .xlsx eftersom det enda
+// underhållna alternativet (xlsx/SheetJS) har en okorrigerad
+// säkerhetsbrist (prototype pollution) i sin senaste npm-publicerade
+// version — CSV öppnas av Excel precis lika bra för den här datan.
+function csvCell(value: string | number) {
+  const s = String(value);
+  return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function exporteraCsv(items: UhPost[], visning: "plan" | "historik") {
+  const rubriker =
+    visning === "plan"
+      ? ["År", "Fastighet", "Kategori", "Läge", "Åtgärd", "Investering (kr)", "Underhåll (kr)", "Typ"]
+      : ["Genomfört", "Ursprungligt år", "Fastighet", "Kategori", "Läge", "Åtgärd", "Investering (kr)", "Underhåll (kr)"];
+
+  const rader = [...items]
+    .sort((a, b) => (visning === "plan" ? a.ar - b.ar : (b.genomford_datum ?? "").localeCompare(a.genomford_datum ?? "")))
+    .map((i) =>
+      visning === "plan"
+        ? [i.ar, i.fastighet_namn ?? "Gemensam", i.kategori_namn ?? "", i.lage ?? "", i.namn, i.investering, i.underhall, i.typ]
+        : [
+            i.genomford_datum ?? "",
+            i.ar,
+            i.fastighet_namn ?? "Gemensam",
+            i.kategori_namn ?? "",
+            i.lage ?? "",
+            i.namn,
+            i.investering,
+            i.underhall,
+          ]
+    );
+
+  const csv = [rubriker, ...rader].map((rad) => rad.map(csvCell).join(";")).join("\r\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `underhallsplan-${visning}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function GrafTooltip({
@@ -822,6 +866,27 @@ export function UnderhallsplanClient({
             <div style={{ color: MUTED }}>{visning === "plan" ? "Kommande poster" : "Genomförda poster"}</div>
             <div style={{ fontSize: 18, fontWeight: 600 }}>{sammanfattningItems.length}</div>
           </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <button
+            onClick={() => exporteraCsv(sammanfattningItems, visning)}
+            className="sans"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 14px",
+              borderRadius: 6,
+              border: "1px solid #d8cfbe",
+              background: "#fff",
+              cursor: "pointer",
+              fontSize: 13,
+              color: "#3d382f",
+            }}
+          >
+            <FileDown size={14} /> Exportera till Excel (CSV)
+          </button>
         </div>
 
         {hasPending && (
