@@ -12,6 +12,8 @@ underhållsplanering och SBA (systematiskt brandskyddsarbete).
 ## Innehåll
 
 - [Överlämning – konton och åtkomst](#överlämning--konton-och-åtkomst)
+- [Vad gör vad? (snabböversikt)](#vad-gör-vad-snabböversikt)
+- [Så här kommer du åt koden](#så-här-kommer-du-åt-koden)
 - [Teknisk stack](#teknisk-stack)
 - [Arkitektur & anslutna tjänster](#arkitektur--anslutna-tjänster)
 - [Datamodell](#datamodell)
@@ -22,6 +24,7 @@ underhållsplanering och SBA (systematiskt brandskyddsarbete).
 - [Databasmigrationer](#databasmigrationer)
 - [Ändringslogg](#ändringslogg)
 - [Export](#export)
+- [Rutiner: backup, uppdateringar och säkerhet](#rutiner-backup-uppdateringar-och-säkerhet)
 - [Kända begränsningar / kvar att göra](#kända-begränsningar--kvar-att-göra)
 
 ## Överlämning – konton och åtkomst
@@ -48,7 +51,46 @@ lösenordshanterare, eller vem som administrerar kontot).
 (t.ex. Bitwarden Organizations, 1Password Families) så att åtkomst kan
 överlämnas utan att lösenord behöver skickas i klartext via mejl/chatt.
 
+## Vad gör vad? (snabböversikt)
 
+Sex olika tjänster är inblandade. Var och en har en tydlig, avgränsad roll
+— ingen av dem kan ersätta någon annan:
+
+| Tjänst | Roll i ett ord | Om den försvinner/sägs upp |
+|---|---|---|
+| **GitHub** | Kodens hem. Här ligger hela källkoden, all historik och alla ändringar (git). Ingenting körs här. | Koden finns kvar lokalt hos alla som klonat repot, men inget automatiskt bygge/deploy längre |
+| **Vercel** | Driften. Hämtar koden från GitHub vid varje push till `main`, bygger den och serverar den publikt på `brfjlg-fastighetsportal.vercel.app`. | Appen slutar vara nåbar på nätet tills den flyttas till en annan hosting-tjänst |
+| **Supabase** | Databasen + inloggningen + fillagringen. All data (underhållsplan, SBA, användare) och själva auth-systemet (magic link) bor här. | Appen förlorar all data och all inloggning — detta är den enda tjänsten som inte enkelt går att byta ut |
+| **Resend** | Skickar mejlen. Kopplad till Supabase Auth som SMTP-leverantör, skickar inloggningslänkar och inbjudningsmejl. | Inloggning slutar fungera (inga mejl skickas) tills en annan SMTP-leverantör kopplas in |
+| **Loopia** | Äger domännamnet brfjlg.se (registrator, ren årsavgift). Pekar vidare till brfnets namnservrar. | Domänen kan gå förlorad vid utebliven betalning — påverkar mejladresser och ev. custom domain |
+| **brfnet** | Sköter DNS-posterna för brfjlg.se (bl.a. de som styrker att Resend får skicka mejl som `@mail.brfjlg.se`) samt föreningens vanliga e-post. | Mejlutskick från appen slutar fungera om DNS-posterna försvinner |
+
+## Så här kommer du åt koden
+
+Koden är öppen (publikt GitHub-repo, se tabellen ovan för varför) — man
+behöver inget GitHub-konto bara för att läsa eller klona den:
+
+```bash
+git clone https://github.com/Brf-Jenny-Linds-Gata/brfjlg-fastighetsportal.git
+cd brfjlg-fastighetsportal/webapp
+npm install
+```
+
+För att kunna **köra appen** lokalt eller **pusha ändringar** behöver du
+dessutom:
+
+1. **`.env.local`** i `webapp/` — hemliga nycklar, delas *inte* via GitHub.
+   Be den nuvarande kontoägaren (se tabellen ovan) om värdena, eller hämta
+   dem själv i Supabase Dashboard → Project Settings → API om du har
+   tillgång till Supabase-kontot. Se [Nycklar och var de bor](#nycklar-och-var-de-bor)
+   för vilka variabler som krävs.
+2. **Push-behörighet till GitHub-repot** — be en nuvarande medlem i
+   GitHub-organisationen `Brf-Jenny-Linds-Gata` bjuda in dig. Utan det kan
+   du fortfarande klona och köra lokalt, bara inte pusha ändringar direkt
+   (workaround: forka repot och skicka en pull request istället).
+
+Se [Kom igång lokalt](#kom-igång-lokalt) för hur du startar appen efter
+detta.
 
 ## Teknisk stack
 
@@ -362,6 +404,51 @@ som miljövariabel i Vercel (server-only, inte prefixad med
   semikolon-separerad CSV med UTF-8 BOM (svensk Excel-standard)
   öppnas identiskt av Excel för den här sortens tabelldata, utan att
   dra in en osäker dependency.
+
+## Rutiner: backup, uppdateringar och säkerhet
+
+Vad som sköts automatiskt av tjänsterna, och vad styrelsen faktiskt
+behöver hålla koll på själv:
+
+### Sköts automatiskt (inget att göra)
+
+- **Servrar/infrastruktur**: appen kör inte på någon egen server —
+  Vercel (drift) och Supabase (databas) äger och patchar sin egen
+  underliggande infrastruktur, OS och runtime. Det finns ingen server
+  för föreningen att uppdatera eller sköta om.
+- **SSL/HTTPS-certifikat**: hanteras automatiskt av Vercel för
+  `*.vercel.app`-domänen.
+- **Deploy**: varje push till `main` bygger och publicerar automatiskt
+  om (se [Arkitektur](#arkitektur--anslutna-tjänster)) — inget manuellt
+  utrullningssteg.
+
+### Kräver manuell koll då och då
+
+- **Databas-backup**: kolla **Supabase Dashboard → Database → Backups**
+  för vad som faktiskt ingår i er plan (gratisplanen har begränsad eller
+  ingen automatisk backup-historik; betalplaner har dagliga backuper och
+  point-in-time recovery). Komplettera vid behov med det manuella
+  scriptet, se [Manuell databas-backup](#manuell-databas-backup) — särskilt
+  inför större ändringar eller experiment.
+- **npm-beroenden (säkerhetspatchar i koden)**: uppdateras **inte**
+  automatiskt. Kör med jämna mellanrum (t.ex. några gånger per år, eller
+  om ni får en säkerhetsvarning):
+  ```bash
+  npm outdated   # visar vilka paket som ligger efter
+  npm audit      # visar kända säkerhetshål i nuvarande versioner
+  ```
+  Uppdatera försiktigt ett paket i taget och testa lokalt innan push —
+  särskilt Next.js, som historiskt haft stora brytande ändringar mellan
+  versioner (se varningen i [Teknisk stack](#teknisk-stack)).
+- **Dependabot** (rekommenderat, inte aktiverat än): GitHub kan
+  automatiskt skapa pull requests när ett beroende har en känd
+  säkerhetsbrist. Kostnadsfritt att slå på för publika repon: **Repo →
+  Settings → Code security → Dependabot alerts / Security updates**.
+  Gör jobbet med att hitta säkerhetspatchar åt er, men ändringarna måste
+  fortfarande granskas och mergas manuellt.
+- **Domän/DNS** (Loopia + brfnet): ingen automatik alls — årsavgiften för
+  brfjlg.se måste betalas manuellt hos Loopia, annars slutar domänen (och
+  därmed e-postutskicken via Resend) att fungera.
 
 ## Kända begränsningar / kvar att göra
 
