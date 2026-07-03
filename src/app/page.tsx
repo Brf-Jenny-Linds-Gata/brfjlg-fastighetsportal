@@ -1,8 +1,16 @@
 import Link from "next/link";
 import { getCurrentProfile } from "@/lib/supabase/profile";
+import { farSe } from "@/lib/permissions";
 
 export default async function Home() {
   const profil = await getCurrentProfile();
+
+  const lankar = [
+    { href: "/underhallsplan", label: "Öppna underhållsplan", sida: "underhallsplan" as const, primar: true },
+    { href: "/sba", label: "Systematiskt brandskyddsarbete", sida: "sba" as const, primar: false },
+    { href: "/anmarkningar", label: "Anmärkningar att åtgärda", sida: "anmarkningar" as const, primar: false },
+    { href: "/admin", label: "Användarhantering", sida: "admin" as const, primar: false },
+  ].filter((l) => farSe(l.sida, profil?.roll));
 
   return (
     <div className="min-h-screen bg-stone-50 px-6 py-10">
@@ -24,27 +32,20 @@ export default async function Home() {
             <p className="mt-4 text-stone-600">
               Inloggad som <strong>{profil.namn}</strong> ({profil.roll}).
             </p>
-            <div className="mt-6 flex gap-3">
-              <Link
-                href="/underhallsplan"
-                className="inline-block rounded-md bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700"
-              >
-                Öppna underhållsplan
-              </Link>
-              <Link
-                href="/sba"
-                className="inline-block rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50"
-              >
-                Systematiskt brandskyddsarbete
-              </Link>
-              {profil.roll === "styrelse" && (
+            <div className="mt-6 flex flex-wrap gap-3">
+              {lankar.map((l) => (
                 <Link
-                  href="/admin"
-                  className="inline-block rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50"
+                  key={l.href}
+                  href={l.href}
+                  className={
+                    l.primar
+                      ? "inline-block rounded-md bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700"
+                      : "inline-block rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50"
+                  }
                 >
-                  Användarhantering
+                  {l.label}
                 </Link>
-              )}
+              ))}
             </div>
           </>
         ) : (

@@ -1,11 +1,17 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/profile";
+import { farSe } from "@/lib/permissions";
 import type { UhPost } from "@/lib/supabase/types";
 import { UnderhallsplanClient } from "./UnderhallsplanClient";
 
 export default async function UnderhallsplanPage() {
   const supabase = await createClient();
   const profil = await getCurrentProfile();
+
+  if (!farSe("underhallsplan", profil?.roll)) {
+    redirect("/");
+  }
 
   const [{ data, error }, { data: fastigheter }, { data: kategorier }] = await Promise.all([
     supabase

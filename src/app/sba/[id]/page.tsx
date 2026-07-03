@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/profile";
+import { farSe } from "@/lib/permissions";
 import type {
   SbaAnmarkning,
   SbaKontroll,
@@ -19,6 +20,10 @@ export default async function SbaKontrollPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const supabase = await createClient();
   const profil = await getCurrentProfile();
+
+  if (!farSe("sba", profil?.roll)) {
+    redirect("/");
+  }
 
   const { data: kontrollRow, error: kontrollError } = await supabase
     .from("sba_kontroller")

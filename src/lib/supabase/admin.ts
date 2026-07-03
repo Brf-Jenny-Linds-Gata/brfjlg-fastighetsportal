@@ -1,5 +1,6 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getCurrentProfile, type Profil } from "@/lib/supabase/profile";
+import { farSe } from "@/lib/permissions";
 
 // Service-role client — bypasses Row Level Security entirely. Only ever
 // call this from Route Handlers, and only after requireStyrelse() has
@@ -27,6 +28,6 @@ export function createAdminClient() {
 // which has no RLS to fall back on.
 export async function requireStyrelse(): Promise<Profil | null> {
   const profil = await getCurrentProfile();
-  if (!profil || profil.roll !== "styrelse") return null;
+  if (!farSe("admin", profil?.roll)) return null;
   return profil;
 }

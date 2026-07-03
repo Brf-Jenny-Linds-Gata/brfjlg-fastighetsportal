@@ -1,11 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/profile";
+import { farSe } from "@/lib/permissions";
 import type { SbaKontroll } from "@/lib/supabase/types";
 
 export default async function SbaPage() {
   const supabase = await createClient();
   const profil = await getCurrentProfile();
+
+  if (!farSe("sba", profil?.roll)) {
+    redirect("/");
+  }
+
   const kanSkapa = profil?.roll === "styrelse" || profil?.roll === "brandskyddsansvarig";
 
   const { data, error } = await supabase
