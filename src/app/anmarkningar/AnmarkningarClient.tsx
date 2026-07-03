@@ -11,18 +11,22 @@ type Anmarkning = {
   foto_url: string | null;
   status: "öppen" | "åtgärdad";
   atgardad_datum: string | null;
+  atgardad_av_namn: string | null;
   atgardskommentar: string | null;
   port_adress: string | null;
   punkt_text: string | null;
+  kontroll_last: boolean;
   kontroll_kontext: string;
 };
 
 export function AnmarkningarClient({
   initialAnmarkningar,
   currentProfilId,
+  currentProfilNamn,
 }: {
   initialAnmarkningar: Anmarkning[];
   currentProfilId: string | null;
+  currentProfilNamn: string | null;
 }) {
   const [anmarkningar, setAnmarkningar] = useState(initialAnmarkningar);
   const [redigerarId, setRedigerarId] = useState<string | null>(null);
@@ -34,13 +38,14 @@ export function AnmarkningarClient({
 
   async function atgarda(id: string) {
     setErrorMsg("");
+    const idag = new Date().toISOString().slice(0, 10);
     const supabase = createClient();
     const { data, error } = await supabase
       .from("sba_anmarkningar")
       .update({
         status: "åtgärdad",
         atgardad_av: currentProfilId,
-        atgardad_datum: new Date().toISOString().slice(0, 10),
+        atgardad_datum: idag,
         atgardskommentar: kommentar.trim() || null,
       })
       .eq("id", id)
@@ -52,7 +57,9 @@ export function AnmarkningarClient({
       return;
     }
 
-    setAnmarkningar((prev) => prev.map((a) => (a.id === id ? { ...a, ...data } : a)));
+    setAnmarkningar((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, ...data, atgardad_av_namn: currentProfilNamn } : a))
+    );
     setRedigerarId(null);
     setKommentar("");
   }
@@ -67,8 +74,12 @@ export function AnmarkningarClient({
             <p className="mt-1 text-xs text-stone-600">
               {[a.punkt_text, a.port_adress].filter(Boolean).join(" · ") || "Ingen specifik plats angiven"}
             </p>
-            {a.status === "åtgärdad" && a.atgardskommentar && (
-              <p className="mt-1 text-xs text-green-700">Åtgärd: {a.atgardskommentar}</p>
+            {a.status === "åtgärdad" && (
+              <p className="mt-1 text-xs text-green-700">
+                Åtgärdad av {a.atgardad_av_namn ?? "okänd"}
+                {a.atgardad_datum ? ` den ${a.atgardad_datum}` : ""}
+                {a.atgardskommentar ? ` — ${a.atgardskommentar}` : ""}
+              </p>
             )}
           </div>
           <span
@@ -81,7 +92,13 @@ export function AnmarkningarClient({
           </span>
         </div>
 
-        {a.status === "öppen" && (
+        {a.status === "öppen" && a.kontroll_last && (
+          <p className="mt-3 text-xs text-stone-500">
+            Protokollet den här anmärkningen hör till är klarmarkerat och låst.
+          </p>
+        )}
+
+        {a.status === "öppen" && !a.kontroll_last && (
           <div className="mt-3">
             {redigerarId === a.id ? (
               <div className="flex flex-wrap gap-2">

@@ -13,7 +13,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import {
-  Pencil,
   Check,
   X,
   RotateCcw,
@@ -21,6 +20,7 @@ import {
   ChevronRight,
   CheckCircle2,
   SquarePen,
+  CalendarClock,
   Plus,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -48,7 +48,7 @@ const KATEGORI_PALETTE = [
 const CURRENT_YEAR = new Date().getFullYear();
 const MUTED = "#6b6459";
 const MUTED_DASH = "#a19a8c";
-const ROW_COLS = "70px 120px 1fr 100px 100px 150px 56px";
+const ROW_COLS = "70px 120px 1fr 100px 100px 150px 190px";
 
 function krCompact(n: number) {
   if (Math.abs(n) >= 1000000) return (n / 1000000).toFixed(1).replace(".0", "") + " mkr";
@@ -151,12 +151,14 @@ export function UnderhallsplanClient({
   fastigheter,
   kategorier,
   currentProfilId,
+  senastUppdaterad,
 }: {
   initialItems: UhPost[];
   kanRedigera: boolean;
   fastigheter: ListPost[];
   kategorier: ListPost[];
   currentProfilId: string | null;
+  senastUppdaterad: string | null;
 }) {
   const [items, setItems] = useState(initialItems);
   const [draft, setDraft] = useState(initialItems);
@@ -186,11 +188,15 @@ export function UnderhallsplanClient({
     return [...list].sort((a, b) => a.ar - b.ar);
   }, [draft, fastighetFilter]);
 
-  const grouped = useMemo(() => groupByYearAndKategori(visibleItems), [visibleItems]);
+  // Planen visar bara kommande/ej genomförda poster — historiken (nedan)
+  // visar bara genomförda. Annars dubbelräknas samma poster i båda vyerna.
+  const planItems = useMemo(() => visibleItems.filter((i) => !i.genomford_datum), [visibleItems]);
+
+  const grouped = useMemo(() => groupByYearAndKategori(planItems), [planItems]);
 
   const alleKategoriNamn = useMemo(
-    () => [...new Set(visibleItems.map((i) => i.kategori_namn ?? "Övrigt"))].sort((a, b) => a.localeCompare(b, "sv")),
-    [visibleItems]
+    () => [...new Set(planItems.map((i) => i.kategori_namn ?? "Övrigt"))].sort((a, b) => a.localeCompare(b, "sv")),
+    [planItems]
   );
   const kategoriColor = (namn: string) => KATEGORI_PALETTE[alleKategoriNamn.indexOf(namn) % KATEGORI_PALETTE.length];
 
@@ -217,17 +223,20 @@ export function UnderhallsplanClient({
     });
   }
 
+  const itemsForPlan = useMemo(() => items.filter((i) => !i.genomford_datum), [items]);
+  const draftForPlan = useMemo(() => draft.filter((i) => !i.genomford_datum), [draft]);
+
   const totalsCurrent = useMemo(
-    () => yearlyTotals(items, fastighetFilter, CURRENT_YEAR, chartToYear),
-    [items, fastighetFilter, chartToYear]
+    () => yearlyTotals(itemsForPlan, fastighetFilter, CURRENT_YEAR, chartToYear),
+    [itemsForPlan, fastighetFilter, chartToYear]
   );
   const totalsDraft = useMemo(
-    () => yearlyTotals(draft, fastighetFilter, CURRENT_YEAR, chartToYear),
-    [draft, fastighetFilter, chartToYear]
+    () => yearlyTotals(draftForPlan, fastighetFilter, CURRENT_YEAR, chartToYear),
+    [draftForPlan, fastighetFilter, chartToYear]
   );
   const staplatData = useMemo(
-    () => kategoriStaplat(items, fastighetFilter, CURRENT_YEAR, chartToYear, alleKategoriNamn),
-    [items, fastighetFilter, chartToYear, alleKategoriNamn]
+    () => kategoriStaplat(itemsForPlan, fastighetFilter, CURRENT_YEAR, chartToYear, alleKategoriNamn),
+    [itemsForPlan, fastighetFilter, chartToYear, alleKategoriNamn]
   );
 
   const chartDataJamfor = totalsCurrent.map((row, idx) => ({
@@ -396,8 +405,14 @@ export function UnderhallsplanClient({
     setRedigerarId(null);
   }
 
-  const totalInvestering = visibleItems.reduce((s, i) => s + i.investering, 0);
-  const totalUnderhall = visibleItems.reduce((s, i) => s + i.underhall, 0);
+  const historikItems = useMemo(
+    () => visibleItems.filter((i) => i.genomford_datum).sort((a, b) => (b.genomford_datum ?? "").localeCompare(a.genomford_datum ?? "")),
+    [visibleItems]
+  );
+
+  const sammanfattningItems = visning === "plan" ? planItems : historikItems;
+  const totalInvestering = sammanfattningItems.reduce((s, i) => s + i.investering, 0);
+  const totalUnderhall = sammanfattningItems.reduce((s, i) => s + i.underhall, 0);
 
   function Rad({ item }: { item: UhPost }) {
     const c = FASTIGHET_COLOR[item.fastighet_namn ?? "Gemensam"] ?? FASTIGHET_COLOR.Gemensam;
@@ -491,8 +506,21 @@ export function UnderhallsplanClient({
       <span style={{ fontWeight: changed ? 700 : 400 }}>{item.ar}</span>
     );
 
+    const knappStil = {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
+      border: "1px solid #d8cfbe",
+      borderRadius: 6,
+      background: "#fff",
+      color: "#3d382f",
+      padding: "3px 8px",
+      fontSize: 11,
+      cursor: "pointer",
+    } as const;
+
     const atgardsKnappar = (
-      <div style={{ display: "flex", gap: 4 }}>
+      <div className="sans" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {kanFlyttas &&
           (isEditing ? (
             <>
@@ -504,21 +532,17 @@ export function UnderhallsplanClient({
               </button>
             </>
           ) : (
-            <button
-              onClick={() => startEdit(item)}
-              style={{ border: "none", background: "none", cursor: "pointer", color: MUTED }}
-              title="Flytta till annat år"
-            >
-              <Pencil size={14} />
+            <button onClick={() => startEdit(item)} style={knappStil} title="Flytta åtgärden till ett annat år">
+              <CalendarClock size={13} /> Flytta år
             </button>
           ))}
         {kanRedigera && !isEditing && (
           <button
             onClick={() => startRedigera(item)}
-            style={{ border: "none", background: "none", cursor: "pointer", color: MUTED }}
-            title="Redigera åtgärd, kategori och kostnad"
+            style={knappStil}
+            title="Redigera namn, kategori och kostnad"
           >
-            <SquarePen size={14} />
+            <SquarePen size={13} /> Redigera
           </button>
         )}
       </div>
@@ -669,6 +693,12 @@ export function UnderhallsplanClient({
           <h1 style={{ fontSize: 26, margin: "4px 0 0", fontWeight: 400 }}>
             Underhållsplan &amp; ekonomisimulering
           </h1>
+          {senastUppdaterad && (
+            <p className="sans" style={{ fontSize: 12, color: MUTED, margin: "6px 0 0" }}>
+              Senast uppdaterad{" "}
+              {new Date(senastUppdaterad).toLocaleString("sv-SE", { dateStyle: "medium", timeStyle: "short" })}
+            </p>
+          )}
         </div>
 
         <div className="sans" style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
@@ -777,16 +807,20 @@ export function UnderhallsplanClient({
 
         <div className="sans" style={{ display: "flex", gap: 12, marginBottom: 16, fontSize: 13, flexWrap: "wrap" }}>
           <div style={{ background: "#fff", border: "1px solid #e4ddd0", borderRadius: 8, padding: "10px 16px", flex: "1 1 140px" }}>
-            <div style={{ color: MUTED }}>Investering (lånefinansierat)</div>
+            <div style={{ color: MUTED }}>
+              Investering (lånefinansierat){visning === "historik" && ", genomfört"}
+            </div>
             <div style={{ fontSize: 18, fontWeight: 600 }}>{krCompact(totalInvestering)}</div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #e4ddd0", borderRadius: 8, padding: "10px 16px", flex: "1 1 140px" }}>
-            <div style={{ color: MUTED }}>Underhåll (fondfinansierat)</div>
+            <div style={{ color: MUTED }}>
+              Underhåll (fondfinansierat){visning === "historik" && ", genomfört"}
+            </div>
             <div style={{ fontSize: 18, fontWeight: 600 }}>{krCompact(totalUnderhall)}</div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #e4ddd0", borderRadius: 8, padding: "10px 16px", flex: "1 1 140px" }}>
-            <div style={{ color: MUTED }}>Antal poster</div>
-            <div style={{ fontSize: 18, fontWeight: 600 }}>{visibleItems.length}</div>
+            <div style={{ color: MUTED }}>{visning === "plan" ? "Kommande poster" : "Genomförda poster"}</div>
+            <div style={{ fontSize: 18, fontWeight: 600 }}>{sammanfattningItems.length}</div>
           </div>
         </div>
 
@@ -899,7 +933,7 @@ export function UnderhallsplanClient({
           <div style={{ textAlign: "right" }}>Investering</div>
           <div style={{ textAlign: "right" }}>Underhåll</div>
           <div>Status</div>
-          <div style={{ textAlign: "right" }}>Redigera</div>
+          <div style={{ textAlign: "right" }}>Hantera</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1136,36 +1170,64 @@ function NyPostForm({
       style={{ background: "#fff", border: "1px solid #e4ddd0", borderRadius: 8, padding: 14, display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}
     >
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        <select value={fastighetId} onChange={(e) => setFastighetId(e.target.value)} style={{ padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}>
-          <option value="">Gemensam</option>
-          {fastigheter.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.namn}
-            </option>
-          ))}
-        </select>
-        <select value={kategoriId} onChange={(e) => setKategoriId(e.target.value)} style={{ padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}>
-          <option value="">Ingen kategori</option>
-          {kategorier.map((k) => (
-            <option key={k.id} value={k.id}>
-              {k.namn}
-            </option>
-          ))}
-        </select>
-        <select value={typ} onChange={(e) => setTyp(e.target.value as "komponent" | "löpande_buffert")} style={{ padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}>
-          <option value="komponent">Komponent</option>
-          <option value="löpande_buffert">Löpande buffert</option>
-        </select>
+        <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontSize: 11, color: MUTED }}>Fastighet</span>
+          <select value={fastighetId} onChange={(e) => setFastighetId(e.target.value)} style={{ padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}>
+            <option value="">Gemensam</option>
+            {fastigheter.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.namn}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontSize: 11, color: MUTED }}>Kategori</span>
+          <select value={kategoriId} onChange={(e) => setKategoriId(e.target.value)} style={{ padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}>
+            <option value="">Ingen kategori</option>
+            {kategorier.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.namn}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontSize: 11, color: MUTED }}>Typ</span>
+          <select value={typ} onChange={(e) => setTyp(e.target.value as "komponent" | "löpande_buffert")} style={{ padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }}>
+            <option value="komponent">Komponent (enskild åtgärd)</option>
+            <option value="löpande_buffert">Löpande buffert (årlig avsättning)</option>
+          </select>
+        </label>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        <input value={namn} onChange={(e) => setNamn(e.target.value)} placeholder="Åtgärd" style={{ flex: "1 1 200px", padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
-        <input value={lage} onChange={(e) => setLage(e.target.value)} placeholder="Läge (valfritt)" style={{ flex: "1 1 140px", padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+        <label style={{ display: "flex", flexDirection: "column", gap: 2, flex: "1 1 200px" }}>
+          <span style={{ fontSize: 11, color: MUTED }}>Åtgärd (namn på posten)</span>
+          <input value={namn} onChange={(e) => setNamn(e.target.value)} placeholder="T.ex. Byte av takpapp" style={{ padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+        </label>
+        <label style={{ display: "flex", flexDirection: "column", gap: 2, flex: "1 1 140px" }}>
+          <span style={{ fontSize: 11, color: MUTED }}>Läge (var i fastigheten, valfritt)</span>
+          <input value={lage} onChange={(e) => setLage(e.target.value)} placeholder="T.ex. Tvättstuga, Tak, Garage" style={{ padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+        </label>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        <input type="number" value={ar} onChange={(e) => setAr(e.target.value)} placeholder="År" style={{ width: 90, padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
-        <input type="number" value={investering} onChange={(e) => setInvestering(e.target.value)} placeholder="Investering" style={{ width: 120, padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
-        <input type="number" value={underhall} onChange={(e) => setUnderhall(e.target.value)} placeholder="Underhåll" style={{ width: 120, padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+        <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontSize: 11, color: MUTED }}>År</span>
+          <input type="number" value={ar} onChange={(e) => setAr(e.target.value)} style={{ width: 90, padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+        </label>
+        <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontSize: 11, color: MUTED }}>Investering, kr (lånefinansierad engångskostnad)</span>
+          <input type="number" value={investering} onChange={(e) => setInvestering(e.target.value)} style={{ width: 160, padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+        </label>
+        <label style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontSize: 11, color: MUTED }}>Underhåll, kr (fondfinansierad direktkostnad)</span>
+          <input type="number" value={underhall} onChange={(e) => setUnderhall(e.target.value)} style={{ width: 160, padding: "6px 8px", border: "1px solid #d8cfbe", borderRadius: 4 }} />
+        </label>
       </div>
+      <p style={{ fontSize: 11, color: MUTED, margin: 0 }}>
+        Fyll bara i det ena av Investering/Underhåll om posten bara är av ena typen (lämna den andra som 0) —
+        de summeras separat i planen.
+      </p>
       {fel && <p style={{ color: "#9a3232", fontSize: 12 }}>{fel}</p>}
       <div style={{ display: "flex", gap: 8 }}>
         <button

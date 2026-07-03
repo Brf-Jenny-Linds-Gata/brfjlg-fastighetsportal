@@ -29,6 +29,7 @@ export type SbaKontroll = {
   kvartal: number;
   ar: number;
   utford_av: string | null;
+  utford_av_namn: string | null;
   utford_datum: string | null;
   status: SbaKontrollStatus;
 };
@@ -56,6 +57,7 @@ export type SbaAnmarkning = {
   foto_url: string | null;
   status: AnmarkningStatus;
   atgardad_av: string | null;
+  atgardad_av_namn: string | null;
   atgardad_datum: string | null;
   atgardskommentar: string | null;
   skapad_at: string;

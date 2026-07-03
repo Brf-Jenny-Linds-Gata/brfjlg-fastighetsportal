@@ -67,8 +67,12 @@ function AnmarkningKort({
           <p className="text-stone-800">{a.beskrivning}</p>
           {a.port_adress && <p className="mt-0.5 text-xs text-stone-600">{a.port_adress}</p>}
           {a.foto_url && <Foto path={a.foto_url} />}
-          {a.status === "åtgärdad" && a.atgardskommentar && (
-            <p className="mt-1 text-xs text-green-700">Åtgärd: {a.atgardskommentar}</p>
+          {a.status === "åtgärdad" && (
+            <p className="mt-1 text-xs text-green-700">
+              Åtgärdad av {a.atgardad_av_namn ?? "okänd"}
+              {a.atgardad_datum ? ` den ${a.atgardad_datum}` : ""}
+              {a.atgardskommentar ? ` — ${a.atgardskommentar}` : ""}
+            </p>
           )}
         </div>
         <span
@@ -165,7 +169,7 @@ function NyAnmarkningForm({
       if (error) throw error;
 
       const port = portar.find((p) => p.id === data.port_id);
-      onSkapad({ ...data, port_adress: port?.adress ?? null });
+      onSkapad({ ...data, port_adress: port?.adress ?? null, atgardad_av_namn: null });
       setBeskrivning("");
       setPortId("");
       setFil(null);
@@ -244,6 +248,7 @@ export function KontrollClient({
   kanRedigeraKontroll,
   kanAtgardaAnmarkning,
   currentProfilId,
+  currentProfilNamn,
 }: {
   kontroll: SbaKontroll;
   kontrollpunkter: SbaKontrollpunkt[];
@@ -253,14 +258,21 @@ export function KontrollClient({
   kanRedigeraKontroll: boolean;
   kanAtgardaAnmarkning: boolean;
   currentProfilId: string | null;
+  currentProfilNamn: string | null;
 }) {
   const [resultat, setResultat] = useState(initialResultat);
   const [anmarkningar, setAnmarkningar] = useState(initialAnmarkningar);
   const [status, setStatus] = useState(kontroll.status);
+  const [utfordAvNamn, setUtfordAvNamn] = useState(kontroll.utford_av_namn);
+  const [utfordDatum, setUtfordDatum] = useState(kontroll.utford_datum);
   const [savingPunkt, setSavingPunkt] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [formForPunkt, setFormForPunkt] = useState<string | null>(null);
   const [visaAllmanForm, setVisaAllmanForm] = useState(false);
+
+  const last = status === "klar";
+  const kanRedigeraNu = kanRedigeraKontroll && !last;
+  const kanAtgardaNu = kanAtgardaAnmarkning && !last;
 
   function resultatFor(punktId: string) {
     return resultat.find((r) => r.punkt_id === punktId)?.godkand ?? null;
@@ -290,16 +302,19 @@ export function KontrollClient({
   }
 
   async function markeraKlar() {
+    const idag = new Date().toISOString().slice(0, 10);
     const supabase = createClient();
     const { error } = await supabase
       .from("sba_kontroller")
-      .update({ status: "klar", utford_av: currentProfilId, utford_datum: new Date().toISOString().slice(0, 10) })
+      .update({ status: "klar", utford_av: currentProfilId, utford_datum: idag })
       .eq("id", kontroll.id);
     if (error) {
       setErrorMsg(error.message);
       return;
     }
     setStatus("klar");
+    setUtfordAvNamn(currentProfilNamn);
+    setUtfordDatum(idag);
   }
 
   async function atgardaAnmarkning(id: string, kommentar: string) {
@@ -323,7 +338,9 @@ export function KontrollClient({
       return;
     }
 
-    setAnmarkningar((prev) => prev.map((a) => (a.id === id ? { ...a, ...data, port_adress: a.port_adress } : a)));
+    setAnmarkningar((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, ...data, port_adress: a.port_adress, atgardad_av_namn: currentProfilNamn } : a))
+    );
   }
 
   const allmannaAnmarkningar = anmarkningarFor(null);
@@ -348,6 +365,14 @@ export function KontrollClient({
           </span>
         </div>
 
+        {status === "klar" && (
+          <p className="mt-1 text-sm text-stone-600">
+            Utförd av <strong>{utfordAvNamn ?? "okänd"}</strong>
+            {utfordDatum ? ` den ${utfordDatum}` : ""}. Protokollet är låst och går inte
+            att ändra.
+          </p>
+        )}
+
         {errorMsg && (
           <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
             {errorMsg}
@@ -368,7 +393,7 @@ export function KontrollClient({
               <div key={p.id} className="rounded-lg border border-stone-200 bg-white p-3 text-sm">
                 <div className="text-stone-800">{p.text}</div>
                 <div className="mt-2">
-                  {kanRedigeraKontroll ? (
+                  {kanRedigeraNu ? (
                     <div className="flex gap-2">
                       <button
                         disabled={savingPunkt === p.id}
@@ -405,12 +430,12 @@ export function KontrollClient({
                 {punktAnmarkningar.length > 0 && (
                   <div className="mt-2 space-y-2">
                     {punktAnmarkningar.map((a) => (
-                      <AnmarkningKort key={a.id} a={a} kanAtgardaAnmarkning={kanAtgardaAnmarkning} onAtgarda={atgardaAnmarkning} />
+                      <AnmarkningKort key={a.id} a={a} kanAtgardaAnmarkning={kanAtgardaNu} onAtgarda={atgardaAnmarkning} />
                     ))}
                   </div>
                 )}
 
-                {kanRedigeraKontroll && (
+                {kanRedigeraNu && (
                   <div className="mt-2">
                     {formForPunkt === p.id ? (
                       <NyAnmarkningForm
@@ -449,11 +474,11 @@ export function KontrollClient({
             </div>
           )}
           {allmannaAnmarkningar.map((a) => (
-            <AnmarkningKort key={a.id} a={a} kanAtgardaAnmarkning={kanAtgardaAnmarkning} onAtgarda={atgardaAnmarkning} />
+            <AnmarkningKort key={a.id} a={a} kanAtgardaAnmarkning={kanAtgardaNu} onAtgarda={atgardaAnmarkning} />
           ))}
         </div>
 
-        {kanRedigeraKontroll && (
+        {kanRedigeraNu && (
           <div className="mt-2">
             {visaAllmanForm ? (
               <NyAnmarkningForm
@@ -477,7 +502,7 @@ export function KontrollClient({
           </div>
         )}
 
-        {kanRedigeraKontroll && status !== "klar" && (
+        {kanRedigeraNu && (
           <div className="mt-8 flex items-center justify-between rounded-lg border border-stone-200 bg-white p-4">
             <span className="text-sm text-stone-700">Klar med kontrollen?</span>
             <button

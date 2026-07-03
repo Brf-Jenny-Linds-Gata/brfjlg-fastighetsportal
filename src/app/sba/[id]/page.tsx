@@ -27,7 +27,7 @@ export default async function SbaKontrollPage({ params }: { params: Promise<{ id
 
   const { data: kontrollRow, error: kontrollError } = await supabase
     .from("sba_kontroller")
-    .select("id, fastighet_id, kvartal, ar, utford_av, utford_datum, status, fastigheter(namn)")
+    .select("id, fastighet_id, kvartal, ar, utford_av, utford_datum, status, fastigheter(namn), profiler(namn)")
     .eq("id", id)
     .single();
 
@@ -38,6 +38,7 @@ export default async function SbaKontrollPage({ params }: { params: Promise<{ id
   const fastighet = Array.isArray(kontrollRow.fastigheter)
     ? kontrollRow.fastigheter[0]
     : kontrollRow.fastigheter;
+  const utfordAvProfil = Array.isArray(kontrollRow.profiler) ? kontrollRow.profiler[0] : kontrollRow.profiler;
   const kontroll: SbaKontroll = {
     id: kontrollRow.id,
     fastighet_id: kontrollRow.fastighet_id,
@@ -45,6 +46,7 @@ export default async function SbaKontrollPage({ params }: { params: Promise<{ id
     kvartal: kontrollRow.kvartal,
     ar: kontrollRow.ar,
     utford_av: kontrollRow.utford_av,
+    utford_av_namn: utfordAvProfil?.namn ?? null,
     utford_datum: kontrollRow.utford_datum,
     status: kontrollRow.status,
   };
@@ -66,7 +68,7 @@ export default async function SbaKontrollPage({ params }: { params: Promise<{ id
       supabase
         .from("sba_anmarkningar")
         .select(
-          "id, kontroll_id, punkt_id, port_id, beskrivning, foto_url, status, atgardad_av, atgardad_datum, atgardskommentar, skapad_at, portar(adress)"
+          "id, kontroll_id, punkt_id, port_id, beskrivning, foto_url, status, atgardad_av, atgardad_datum, atgardskommentar, skapad_at, portar(adress), profiler(namn)"
         )
         .eq("kontroll_id", id)
         .order("skapad_at", { ascending: false }),
@@ -78,11 +80,15 @@ export default async function SbaKontrollPage({ params }: { params: Promise<{ id
   const anmarkningar: (SbaAnmarkning & { port_adress: string | null })[] = (anmarkningarData ?? []).map(
     (row) => {
       const port = Array.isArray(row.portar) ? row.portar[0] : row.portar;
-      return { ...row, port_adress: port?.adress ?? null };
+      const atgardareProfil = Array.isArray(row.profiler) ? row.profiler[0] : row.profiler;
+      return { ...row, port_adress: port?.adress ?? null, atgardad_av_namn: atgardareProfil?.namn ?? null };
     }
   );
   const portar = portarData ?? [];
 
+  // OBS: rollbaserat bara — om kontrollen är "klar" spärras redigering reaktivt
+  // i KontrollClient (baserat på klientens egen status-state), inte här, så att
+  // spärren slår till direkt efter "Markera klar" utan omladdning.
   const kanRedigeraKontroll = profil?.roll === "styrelse" || profil?.roll === "brandskyddsansvarig";
   const kanAtgardaAnmarkning =
     profil?.roll === "styrelse" || profil?.roll === "brandskyddsansvarig" || profil?.roll === "entreprenör";
@@ -97,6 +103,7 @@ export default async function SbaKontrollPage({ params }: { params: Promise<{ id
       kanRedigeraKontroll={kanRedigeraKontroll}
       kanAtgardaAnmarkning={kanAtgardaAnmarkning}
       currentProfilId={profil?.id ?? null}
+      currentProfilNamn={profil?.namn ?? null}
     />
   );
 }

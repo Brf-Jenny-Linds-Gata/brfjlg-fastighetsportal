@@ -17,7 +17,7 @@ export default async function UnderhallsplanPage() {
     supabase
       .from("uh_poster")
       .select(
-        "id, fastighet_id, kategori_id, lage, namn, ar, investering, underhall, typ, status, genomford_datum, aterkommande_intervall_ar, fastigheter(namn), uh_kategorier(namn)"
+        "id, fastighet_id, kategori_id, lage, namn, ar, investering, underhall, typ, status, genomford_datum, aterkommande_intervall_ar, uppdaterad_at, fastigheter(namn), uh_kategorier(namn)"
       )
       .eq("status", "godkänd")
       .order("ar", { ascending: true }),
@@ -32,6 +32,11 @@ export default async function UnderhallsplanPage() {
       </div>
     );
   }
+
+  const senastUppdaterad = (data ?? []).reduce<string | null>((max, row) => {
+    if (!row.uppdaterad_at) return max;
+    return !max || row.uppdaterad_at > max ? row.uppdaterad_at : max;
+  }, null);
 
   const items: UhPost[] = (data ?? []).map((row) => {
     const fastighet = Array.isArray(row.fastigheter) ? row.fastigheter[0] : row.fastigheter;
@@ -61,6 +66,7 @@ export default async function UnderhallsplanPage() {
       fastigheter={fastigheter ?? []}
       kategorier={kategorier ?? []}
       currentProfilId={profil?.id ?? null}
+      senastUppdaterad={senastUppdaterad}
     />
   );
 }

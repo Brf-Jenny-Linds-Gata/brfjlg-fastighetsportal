@@ -28,7 +28,11 @@ export function NyKontrollForm({ fastigheter }: { fastigheter: { id: string; nam
       .single();
 
     if (error) {
-      setErrorMsg(error.message);
+      if (error.code === "23505") {
+        setErrorMsg("Det finns redan en kontroll för den här fastigheten, kvartalet och året. Ändra något av valen ovan.");
+      } else {
+        setErrorMsg(error.message);
+      }
       setSaving(false);
       return;
     }

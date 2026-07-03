@@ -34,6 +34,7 @@ export default async function SbaPage() {
       kvartal: row.kvartal,
       ar: row.ar,
       utford_av: row.utford_av,
+      utford_av_namn: null,
       utford_datum: row.utford_datum,
       status: row.status,
     };
