@@ -37,6 +37,14 @@ export default async function Home() {
               >
                 Systematiskt brandskyddsarbete
               </Link>
+              {profil.roll === "styrelse" && (
+                <Link
+                  href="/admin"
+                  className="inline-block rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50"
+                >
+                  Användarhantering
+                </Link>
+              )}
             </div>
           </>
         ) : (
