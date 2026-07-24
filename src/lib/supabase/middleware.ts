@@ -32,7 +32,10 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/auth");
 
-  if (!user && !isAuthRoute) {
+  // Fast, fixed keep-alive check — no session, no user data. See src/app/api/health/route.ts.
+  const isPublicHealthRoute = request.nextUrl.pathname === "/api/health";
+
+  if (!user && !isAuthRoute && !isPublicHealthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
