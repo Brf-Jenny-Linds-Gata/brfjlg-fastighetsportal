@@ -12,6 +12,7 @@ underhållsplanering och SBA (systematiskt brandskyddsarbete).
 ## Innehåll
 
 - [Överlämning – konton och åtkomst](#överlämning--konton-och-åtkomst)
+- [Lokal projektstruktur](#lokal-projektstruktur)
 - [Vad gör vad? (snabböversikt)](#vad-gör-vad-snabböversikt)
 - [Så här kommer du åt koden](#så-här-kommer-du-åt-koden)
 - [Teknisk stack](#teknisk-stack)
@@ -56,6 +57,56 @@ lösenordshanteraren) för att administrera samtliga tjänster nedan.
 **Rekommendation:** använd en delad lösenordshanterare för föreningen
 (t.ex. Bitwarden Organizations, 1Password Families) så att åtkomst kan
 överlämnas utan att lösenord behöver skickas i klartext via mejl/chatt.
+
+## Lokal projektstruktur
+
+Aktuell och fungerande repo-root på Rolfs Windows-dator är:
+
+```
+C:\Users\rb\OneDrive\Dokument\ClaudeCode\Brf JLG\BrfJLG Fastighetsportal\webapp
+```
+
+Strukturen är:
+
+```
+BrfJLG Fastighetsportal
+├── .claude
+└── webapp
+    ├── .claude
+    ├── .git
+    ├── src
+    └── ...
+```
+
+`webapp` är alltså den faktiska Git-repo-roten.
+
+### Framtida möjlig städning
+
+**Framtida städpunkt – ej prioriterad.** Det finns en möjlig framtida
+kosmetisk städning där innehållet i `webapp` flyttas upp en nivå så att
+`BrfJLG Fastighetsportal` blir Git-repo-root direkt. Detta är **inte**
+nödvändigt för drift eller utveckling och ska inte göras enbart för
+sakens skull.
+
+Innan en sådan flytt måste man kontrollera:
+
+- `.claude` finns både i övermappen och inne i `webapp` — deras
+  settings måste jämföras/slås ihop säkert.
+- `webapp/.claude/settings.local.json` har/har haft absoluta
+  Claude-temp-/scratchpad-sökvägar som innehåller den nuvarande
+  `...\webapp\...`-sökvägen.
+- Claude Code måste därefter öppnas från den nya repo-roten.
+- Git remote, branch, status och repo-root ska verifieras efter
+  flytten.
+- Inga filer får tappas eller skrivas över.
+
+### Aktuell verifierad repo-information
+
+- **GitHub:** `Brf-Jenny-Linds-Gata/brfjlg-fastighetsportal`
+- **Branch:** `main`
+- **Production:** https://brfjlg-fastighetsportal.vercel.app
+- **Senaste verifierade commit vid dokumentationstillfället:**
+  `052e7f5bedfa3ca6fd58deef86ff5dc45f1544cb` — "feat: add home screen app metadata"
 
 ## Vad gör vad? (snabböversikt)
 
