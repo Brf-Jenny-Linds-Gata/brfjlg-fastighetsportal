@@ -9,8 +9,32 @@ underhållsplanering och SBA (systematiskt brandskyddsarbete).
 > hänger ihop. Fält märkta 🔲 **FYLL I** nedan är sådant bara du (den
 > nuvarande ägaren av kontona) kan fylla i.
 
+## Dokumentation
+
+Det här README:t är en lättläst ingång. För en verklig överlämning av drift
+och vidareutveckling, se de fördjupade dokumenten i `docs/`:
+
+- [`docs/HANDOVER.md`](docs/HANDOVER.md) – teknisk överlämning: tjänster,
+  konton, arkitektur, deployment, backup, rollback och en checklista för
+  övertagande
+- [`docs/OPERATIONS.md`](docs/OPERATIONS.md) – praktisk driftkalender,
+  återkommande kontroller och underhåll
+- [`docs/SECURITY.md`](docs/SECURITY.md) – autentisering, roller, RLS,
+  Storage, säkerhetsregler och kvarstående säkerhetsspår
+- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) – betydande säkerhets- och
+  driftförändringar med datum och commit-referenser
+- [`test/security/rls-integration/README.md`](test/security/rls-integration/README.md) –
+  isolerat RLS-integrationstest (metodik och körinstruktioner)
+- [`test/security/rls-integration/RESULTS_2026-07-30.md`](test/security/rls-integration/RESULTS_2026-07-30.md) –
+  senaste verifierade testresultat
+
+`AGENTS.md` (och `CLAUDE.md`, som bara pekar dit) är instruktioner för
+AI-utvecklingsagenter om Next.js 16:s brytande ändringar — de är **inte**
+drift- eller överlämningsdokumentation och ersätter inte dokumenten ovan.
+
 ## Innehåll
 
+- [Dokumentation](#dokumentation)
 - [Överlämning – konton och åtkomst](#överlämning--konton-och-åtkomst)
 - [Lokal projektstruktur](#lokal-projektstruktur)
 - [Vad gör vad? (snabböversikt)](#vad-gör-vad-snabböversikt)
@@ -105,8 +129,10 @@ Innan en sådan flytt måste man kontrollera:
 - **GitHub:** `Brf-Jenny-Linds-Gata/brfjlg-fastighetsportal`
 - **Branch:** `main`
 - **Production:** https://brfjlg-fastighetsportal.vercel.app
-- **Senaste verifierade commit vid dokumentationstillfället:**
-  `052e7f5bedfa3ca6fd58deef86ff5dc45f1544cb` — "feat: add home screen app metadata"
+- **Dokumentationsbaslinje (datumstämplad, inte automatiskt aktuell för
+  alltid — verifiera alltid `git status`/`git log` på nytt):**
+  `545ac9289d30b1935596cea165961d8c9ae817ac` — "fix: use get redirect
+  after logout" — verifierad 2026-07-30
 
 ## Vad gör vad? (snabböversikt)
 
@@ -153,7 +179,7 @@ detta.
 
 | Del | Val |
 |---|---|
-| Ramverk | Next.js 16 (App Router, Turbopack) |
+| Ramverk | Next.js 16.2.10 med App Router |
 | Språk | TypeScript |
 | UI | Tailwind CSS 4 + en del handskrivna inline-stilar (se [Mappstruktur](#mappstruktur)) |
 | Databas / Auth / Storage | Supabase (Postgres + Row Level Security, Auth, Storage) |
@@ -291,7 +317,39 @@ föreningen växer ur de fyra rollerna är det värt att ta upp igen.
 
 ## Autentisering
 
-Passwordless magic-link via Supabase Auth (`@supabase/ssr`):
+Passwordless magic-link via Supabase Auth (`@supabase/ssr`) — användaren
+skriver sin e-postadress och får en inloggningslänk skickad till sig.
+**Det finns ännu ingen vanlig lösenordsinloggning.**
+
+**Viktigt: magic link innebär inte öppen registrering.** Nya konton kan
+inte självregistreras genom att bara ange en e-postadress:
+
+- `signInWithOtp` i `src/app/login/page.tsx` anropas med
+  **`shouldCreateUser: false`** — Supabase skapar då aldrig ett nytt
+  `auth.users`-konto åt en okänd adress, den skickar bara en länk till en
+  adress som redan har ett konto.
+- Om adressen saknar konto svarar Supabase med felkoden
+  `signup_disabled`, vilket login-sidan mappar om till ett tydligt
+  meddelande: *"Denna e-postadress är inte kopplad till något konto.
+  Kontakta styrelsen för att bli inbjuden."*
+- I Supabase Dashboard (Authentication → Settings) är **"Allow new users
+  to sign up" satt till OFF** (Production-verifierat 2026-07-30).
+- Enda vägen in för en ny användare är att **styrelsen** bjuder in
+  personen via `/admin` (se [Användarhantering](#användarhantering-admin-vy)),
+  som anropar `auth.admin.inviteUserByEmail` med service-role-nyckeln.
+- Utöver detta krävs sedan migration `db/010` (se
+  [Databasmigrationer](#databasmigrationer)) att den inloggade
+  användaren faktiskt har en rad i `profiler` för att få läsa någon
+  data alls — inloggning ensamt räcker inte.
+
+Se `docs/SECURITY.md` för den fullständiga säkerhetsmodellen och
+autentiseringsflödet.
+
+Önskad framtida ändring är vanlig e-post- och lösenordsinloggning
+(samma grundprincip som i ett annat av föreningens systerprojekt) — se
+`docs/SECURITY.md`, avsnitt "Kvarstående säkerhetsspår" (S5). Detta är
+**inte implementerat eller beslutat i detalj**, bara ett framtida
+utvecklingsspår.
 
 - `src/lib/supabase/client.ts` / `server.ts` / `middleware.ts` – tre
   varianter av Supabase-klienten för respektive kontext
@@ -316,7 +374,7 @@ URL:er: `http://localhost:3000/auth/callback` och
 Supabase Admin API, utan att skicka något mejl:
 
 ```bash
-node --env-file=.env.local scripts/dev-magic-link.mjs poffe@amble.se
+node --env-file=.env.local scripts/dev-magic-link.mjs anvandare@example.com
 ```
 
 Länken landar på `src/app/auth/dev-session/page.tsx` – en dev-only sida
@@ -402,6 +460,7 @@ migrationsrunner kopplad till detta projekt.
 | `007_uh_andringslogg_insert_policy.sql` | **Kritisk fix** – ändringsloggens trigger saknade INSERT-policy, blockerade alla år-/kostnadsändringar på UH-poster |
 | `008_grant_service_role_privileges.sql` | **Kritisk fix** – samma sak som 004 men för `service_role` (användarhanteringens admin-API:er) |
 | `009_uh_andringslogg_fler_falt.sql` | Utökar ändringsloggens trigger till att även logga namn/fastighet/kategori/genomförd-datum (tidigare bara år/investering/underhåll/status) |
+| `010_require_profile_for_read_access.sql` | **Kritisk säkerhetsfix** – inför `public.is_member()` (kontrollerar att den inloggade användaren har en rad i `profiler`) och skärper samtliga 10 applikationstabellers SELECT-policyer samt läsåtkomsten till Storage-bucketen `sba-foton` till att kräva detta. Applicerad och verifierad i Production 2026-07-30, se `docs/SECURITY.md` |
 
 ### Manuell databas-backup
 
