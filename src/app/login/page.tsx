@@ -18,12 +18,21 @@ export default function LoginPage() {
       email,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
+        shouldCreateUser: false,
       },
     });
 
     if (error) {
       setStatus("error");
-      setErrorMsg(error.message);
+      // "signup_disabled" är Supabase Auths dokumenterade felkod när ett nytt
+      // konto skulle behöva skapas men det inte är tillåtet (se
+      // shouldCreateUser: false ovan) — enda fallet vi mappar om, allt annat
+      // visas oförändrat så vi inte döljer oväntade fel.
+      setErrorMsg(
+        error.code === "signup_disabled"
+          ? "Denna e-postadress är inte kopplad till något konto. Kontakta styrelsen för att bli inbjuden."
+          : error.message
+      );
     } else {
       setStatus("sent");
     }

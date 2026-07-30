@@ -1,0 +1,65 @@
+# =========================================================
+# BrfJLG Fastighetsportal — isolerad RLS-integrationstestmiljö
+#
+# ANVÄNDS ENDAST LOKALT PÅ NUC, I EN EGEN KATALOG, SKILD FRÅN
+# ALLA ANDRA DOCKER-PROJEKT (t.ex. Djupviks lokala Supabase).
+#
+# Denna fil startar EN enda Postgres-container med Supabases
+# officiella "supabase/postgres"-avbildning. Verifierat mot källan
+# (github.com/supabase/postgres, migrations/db/init-scripts/):
+# rollerna anon/authenticated/service_role (service_role med
+# BYPASSRLS), auth.users-tabellen samt auth.uid()/auth.role()
+# skapas av avbildningens egna init-scripts, INNAN någon GoTrue/
+# Storage-API-tjänst kopplar upp. DÄREMOT är det INTE bekräftat att
+# storage.objects/storage.buckets skapas på samma sätt (motstridiga
+# fynd vid granskning) — run_probe.sh kontrollerar därför detta
+# explicit vid körning och hoppar över storage-testet (mål 6) med
+# tydlig logg om tabellen saknas, snarare än att anta att den finns.
+# Ingen GoTrue, ingen PostgREST, ingen Kong, ingen Studio startas —
+# RLS testas direkt via psql genom att simulera JWT-claims med
+# set_config(), enligt Supabases egen dokumenterade metod för RLS-
+# testning. Detta innebär att INGA riktiga magic links eller
+# invites någonsin skickas.
+#
+# Isolering:
+#   - eget compose-projektnamn (name: nedan) -> egen Docker-nätverks-
+#     och volymnamnrymd, kolliderar inte med andra projekt
+#   - egen namngiven volym (skapas av detta compose-projekt, inte
+#     en extern/delad volym)
+#   - eget, icke-standardiserat värdport (se .env.example) — verifiera
+#     manuellt att porten är ledig innan uppstart (se README.md)
+#   - engångslösenord som du själv sätter i en lokal .env (se
+#     .env.example) — inte relaterat till någon riktig databas
+# =========================================================
+
+name: brfjlg-security-test
+
+services:
+  db:
+    image: ghcr.io/supabase/postgres:17.6.1.157
+    container_name: brfjlg_sectest_pg
+    restart: "no"
+    environment:
+      POSTGRES_PASSWORD: ${TEST_PG_PASSWORD:?sätt TEST_PG_PASSWORD i .env, se .env.example}
+      POSTGRES_DB: postgres
+    ports:
+      # Explicit bunden till 127.0.0.1 — INTE alla nätverksinterface.
+      # Utan uttrycklig host-adress binder Docker Compose annars till
+      # 0.0.0.0 som default, vilket skulle exponera testcontainern på
+      # NUC:ens Tailscale-/nätverksadress.
+      - "127.0.0.1:${TEST_PG_PORT:-55432}:5432"
+    volumes:
+      - brfjlg_sectest_pgdata:/var/lib/postgresql/data
+    # Rimliga resursgränser för en NUC med 8 GB RAM som redan delas med
+    # Djupviks miljö — justera vid behov, men lämna aldrig obegränsat.
+    mem_limit: 1g
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  brfjlg_sectest_pgdata:
+    name: brfjlg_sectest_pgdata
